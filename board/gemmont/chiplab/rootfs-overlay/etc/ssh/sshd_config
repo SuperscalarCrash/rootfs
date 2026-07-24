@@ -1,0 +1,23 @@
+Port 22
+AddressFamily any
+ListenAddress 0.0.0.0
+ListenAddress ::
+
+# Ed25519 avoids several minutes of first-boot RSA prime generation on the
+# 72 MHz FPGA core while retaining a modern, secure host-key algorithm.
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+PermitRootLogin prohibit-password
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication no
+PermitEmptyPasswords no
+KbdInteractiveAuthentication no
+
+X11Forwarding no
+AllowTcpForwarding yes
+GatewayPorts no
+PermitTunnel no
+UseDNS no
+PrintMotd yes
+Subsystem sftp internal-sftp

@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+
+mountpoint=${1:-/mnt/persist}
+mtd_name=${2:-ubi}
+
+if ! grep -q "\"${mtd_name}\"" /proc/mtd; then
+	echo "MTD partition '${mtd_name}' was not found" >&2
+	exit 1
+fi
+
+mtd_number=$(sed -n "s/^mtd\\([0-9][0-9]*\\):.*\"${mtd_name}\"$/\\1/p" /proc/mtd)
+if [ -z "${mtd_number}" ]; then
+	echo "Unable to determine MTD number for '${mtd_name}'" >&2
+	exit 1
+fi
+
+if [ ! -e /dev/ubi0 ]; then
+	ubiattach /dev/ubi_ctrl -m "${mtd_number}"
+fi
+
+if ! ubinfo -d 0 -N rootfs >/dev/null 2>&1; then
+	echo "UBI volume 'rootfs' does not exist; refusing to format or create it" >&2
+	exit 1
+fi
+
+mkdir -p "${mountpoint}"
+mount -t ubifs ubi0:rootfs "${mountpoint}"
+echo "Mounted ubi0:rootfs on ${mountpoint}"
+

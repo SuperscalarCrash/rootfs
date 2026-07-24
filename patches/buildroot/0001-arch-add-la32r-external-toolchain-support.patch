@@ -1,0 +1,173 @@
+diff --git a/arch/Config.in b/arch/Config.in
+index 624b5e9d21..5db350166a 100644
+--- a/arch/Config.in
++++ b/arch/Config.in
+@@ -84,6 +84,16 @@ config BR2_i386
+ 	  Intel i386 architecture compatible microprocessor
+ 	  http://en.wikipedia.org/wiki/I386
+ 
++config BR2_loongarch32r
++	bool "LoongArch32 Reduced"
++	depends on !BR2_HIDE_SECONDARY_TARGET_OPTIONS
++	select BR2_USE_MMU
++	select BR2_ARCH_HAS_NO_TOOLCHAIN_BUILDROOT
++	help
++	  LoongArch32 Reduced is the 32-bit reduced LoongArch ISA used
++	  by the Gemmont core. It uses the ILP32S soft-float ABI and
++	  currently requires a compatible external toolchain.
++
+ config BR2_loongarch64
+ 	bool "LoongArch64"
+ 	depends on !BR2_HIDE_SECONDARY_TARGET_OPTIONS
+@@ -416,7 +426,7 @@ if BR2_hppa
+ source "arch/Config.in.hppa"
+ endif
+ 
+-if BR2_loongarch64
++if BR2_loongarch32r || BR2_loongarch64
+ source "arch/Config.in.loongarch"
+ endif
+ 
+diff --git a/arch/Config.in.loongarch b/arch/Config.in.loongarch
+index 4b50b98710..b8cd894ea3 100644
+--- a/arch/Config.in.loongarch
++++ b/arch/Config.in.loongarch
+@@ -2,8 +2,15 @@
+ 
+ choice
+ 	prompt "Target Architecture Variant"
++	default BR2_loongarch32r_generic if !BR2_ARCH_IS_64
+ 	default BR2_loongarch64_generic if BR2_ARCH_IS_64
+ 
++config BR2_loongarch32r_generic
++	bool "Generic LoongArch32 Reduced"
++	depends on !BR2_ARCH_IS_64
++	help
++	  Generic LoongArch32 Reduced processor.
++
+ config BR2_loongarch64_generic
+ 	bool "Generic LoongArch 64-bit"
+ 	depends on BR2_ARCH_IS_64
+@@ -28,10 +35,12 @@ endchoice
+ 
+ choice
+ 	prompt "FPU Type"
+-	default BR2_LOONGARCH_FPU_64
++	default BR2_LOONGARCH_FPU_NONE if !BR2_ARCH_IS_64
++	default BR2_LOONGARCH_FPU_64 if BR2_ARCH_IS_64
+ 
+ config BR2_LOONGARCH_FPU_64
+ 	bool "64"
++	depends on BR2_ARCH_IS_64
+ 	help
+ 	  Allow the use of hardware floating-point instructions for
+ 	  32-bit and 64-bit operations.
+@@ -39,7 +48,7 @@ config BR2_LOONGARCH_FPU_64
+ config BR2_LOONGARCH_FPU_32
+ 	bool "32"
+ 	# Only supported by lp64s and lp64f ABIs which are marked as broken
+-	depends on BR2_BROKEN
++	depends on BR2_ARCH_IS_64 && BR2_BROKEN
+ 	help
+ 	  Allow the use of hardware floating-point instructions for
+ 	  32-bit operations only.
+@@ -47,7 +56,7 @@ config BR2_LOONGARCH_FPU_32
+ config BR2_LOONGARCH_FPU_NONE
+ 	bool "none"
+ 	# Only supported by lp64s ABI which is marked as broken
+-	depends on BR2_BROKEN
++	depends on !BR2_ARCH_IS_64 || BR2_BROKEN
+ 	help
+ 	  Prevent the use of hardware floating-point instructions.
+ endchoice
+@@ -63,6 +72,7 @@ config BR2_LOONGARCH_SIMD_NONE
+ 
+ config BR2_LOONGARCH_SIMD_LSX
+ 	bool "LSX"
++	depends on BR2_ARCH_IS_64
+ 	depends on BR2_LOONGARCH_FPU_64
+ 	help
+ 	  Enable generating instructions from the 128-bit LoongArch SIMD
+@@ -70,6 +80,7 @@ config BR2_LOONGARCH_SIMD_LSX
+ 
+ config BR2_LOONGARCH_SIMD_LASX
+ 	bool "LASX"
++	depends on BR2_ARCH_IS_64
+ 	depends on BR2_LOONGARCH_FPU_64
+ 	help
+ 	  Enable generating instructions from the 256-bit LoongArch
+@@ -79,10 +90,15 @@ endchoice
+ 
+ choice
+ 	prompt "Target ABI"
++	default BR2_LOONGARCH_ABI_ILP32S if !BR2_ARCH_IS_64
+ 	default BR2_LOONGARCH_ABI_LP64D if BR2_ARCH_IS_64 && BR2_LOONGARCH_FPU_64
+ 	default BR2_LOONGARCH_ABI_LP64F if BR2_ARCH_IS_64 && BR2_LOONGARCH_FPU_32
+ 	default BR2_LOONGARCH_ABI_LP64S if BR2_ARCH_IS_64 && BR2_LOONGARCH_SIMD_NONE
+ 
++config BR2_LOONGARCH_ABI_ILP32S
++	bool "ilp32s"
++	depends on !BR2_ARCH_IS_64 && BR2_LOONGARCH_FPU_NONE
++
+ config BR2_LOONGARCH_ABI_LP64D
+ 	bool "lp64d"
+ 	depends on BR2_ARCH_IS_64
+@@ -103,6 +119,7 @@ config BR2_LOONGARCH_ABI_LP64S
+ endchoice
+ 
+ config BR2_ARCH
++	default "loongarch32" if !BR2_ARCH_IS_64
+ 	default "loongarch64" if BR2_ARCH_IS_64
+ 
+ config BR2_NORMALIZED_ARCH
+@@ -112,6 +129,7 @@ config BR2_ENDIAN
+ 	default "LITTLE"
+ 
+ config BR2_GCC_TARGET_ARCH
++	default "la32rv1.0" if BR2_loongarch32r_generic
+ 	default "loongarch64" if BR2_loongarch64_generic
+ 	default "la64v1.0" if BR2_loongarch64_v1_0
+ 	default "la64v1.1" if BR2_loongarch64_v1_1
+@@ -130,6 +148,7 @@ config BR2_GCC_TARGET_ABI
+ 	default "lp64d" if BR2_LOONGARCH_ABI_LP64D
+ 	default "lp64f" if BR2_LOONGARCH_ABI_LP64F
+ 	default "lp64s" if BR2_LOONGARCH_ABI_LP64S
++	default "ilp32s" if BR2_LOONGARCH_ABI_ILP32S
+ 
+ config BR2_READELF_ARCH_NAME
+ 	default "LoongArch"
+diff --git a/toolchain/Config.in b/toolchain/Config.in
+index 910cd103dc..5aa6cf8f6d 100644
+--- a/toolchain/Config.in
++++ b/toolchain/Config.in
+@@ -848,10 +848,15 @@ config BR2_TOOLCHAIN_GCC_AT_LEAST_15
+ 	bool
+ 	select BR2_TOOLCHAIN_GCC_AT_LEAST_14
+ 
++config BR2_TOOLCHAIN_GCC_AT_LEAST_16
++	bool
++	select BR2_TOOLCHAIN_GCC_AT_LEAST_15
++
+ # This order guarantees that the highest version is set, as kconfig
+ # stops affecting a value on the first matching default.
+ config BR2_TOOLCHAIN_GCC_AT_LEAST
+ 	string
++	default "16"	if BR2_TOOLCHAIN_GCC_AT_LEAST_16
+ 	default "15"	if BR2_TOOLCHAIN_GCC_AT_LEAST_15
+ 	default "14"	if BR2_TOOLCHAIN_GCC_AT_LEAST_14
+ 	default "13"	if BR2_TOOLCHAIN_GCC_AT_LEAST_13
+diff --git a/toolchain/toolchain-external/toolchain-external-custom/Config.in.options b/toolchain/toolchain-external/toolchain-external-custom/Config.in.options
+index 9ca024f5b8..494bd9c07e 100644
+--- a/toolchain/toolchain-external/toolchain-external-custom/Config.in.options
++++ b/toolchain/toolchain-external/toolchain-external-custom/Config.in.options
+@@ -46,6 +46,10 @@ choice
+ 	  Set to the gcc version that is used by your external
+ 	  toolchain.
+ 
++config BR2_TOOLCHAIN_EXTERNAL_GCC_16
++	bool "16.x"
++	select BR2_TOOLCHAIN_GCC_AT_LEAST_16
++
+ config BR2_TOOLCHAIN_EXTERNAL_GCC_15
+ 	bool "15.x"
+ 	depends on !BR2_ARCH_NEEDS_GCC_AT_LEAST_16

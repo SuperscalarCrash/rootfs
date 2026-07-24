@@ -1,0 +1,61 @@
+#!/bin/sh
+
+DAEMON=sshd
+PIDFILE=/var/run/${DAEMON}.pid
+HOST_KEY=/etc/ssh/ssh_host_ed25519_key
+
+start() {
+	if [ ! -s "${HOST_KEY}" ]; then
+		printf 'Generating OpenSSH Ed25519 host key: '
+		if ! /usr/bin/ssh-keygen -q -t ed25519 -N '' -f "${HOST_KEY}"; then
+			echo "FAIL"
+			return 1
+		fi
+		echo "OK"
+	fi
+
+	printf 'Starting %s: ' "${DAEMON}"
+	if start-stop-daemon --start --pidfile "${PIDFILE}" \
+		--exec "/usr/sbin/${DAEMON}"; then
+		echo "OK"
+	else
+		echo "FAIL"
+		return 1
+	fi
+}
+
+stop() {
+	printf 'Stopping %s: ' "${DAEMON}"
+	if start-stop-daemon --stop --pidfile "${PIDFILE}" \
+		--exec "/usr/sbin/${DAEMON}"; then
+		echo "OK"
+	else
+		echo "FAIL"
+		return 1
+	fi
+
+	while [ -f "${PIDFILE}" ]; do
+		sleep 0.1
+	done
+}
+
+case "${1:-}" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		stop
+		start
+		;;
+	reload)
+		start-stop-daemon --stop --signal HUP -q \
+			--pidfile "${PIDFILE}" --exec "/usr/sbin/${DAEMON}"
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload}"
+		exit 2
+		;;
+esac

@@ -1,0 +1,146 @@
+name: Build and release Gemmont rootfs
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rootfs-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GCC16_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchains/gcc-16.1.0-la32r
+
+jobs:
+  toolchain:
+    name: Build GCC 16.1.0 LA32R toolchain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out rootfs sources
+        uses: actions/checkout@v4
+
+      - name: Install toolchain build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bison build-essential bzip2 curl file flex gawk texinfo xz-utils \
+            zlib1g-dev
+
+      - name: Restore GCC 16 toolchain cache
+        id: gcc_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .toolchains/gcc-16.1.0-la32r
+          key: gcc-16.1.0-la32r-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-gcc16-toolchain.sh', 'scripts/fetch-toolchain.sh') }}
+
+      - name: Build or verify GCC 16.1.0
+        env:
+          JOBS: "2"
+        run: ./scripts/build-gcc16-toolchain.sh
+
+      - name: Save GCC 16 toolchain cache
+        if: steps.gcc_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .toolchains/gcc-16.1.0-la32r
+          key: gcc-16.1.0-la32r-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-gcc16-toolchain.sh', 'scripts/fetch-toolchain.sh') }}
+
+  rootfs:
+    name: Build LA32R rootfs
+    needs: toolchain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out rootfs sources
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v.+$ ]]; then
+            echo "Unsupported release tag: ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+
+      - name: Install Buildroot dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison build-essential cpio curl file flex gawk git \
+            libncurses-dev patch perl python3 rsync unzip wget xz-utils zstd
+
+      - name: Restore GCC 16 toolchain cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .toolchains/gcc-16.1.0-la32r
+          key: gcc-16.1.0-la32r-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-gcc16-toolchain.sh', 'scripts/fetch-toolchain.sh') }}
+          fail-on-cache-miss: true
+
+      - name: Restore Buildroot download cache
+        uses: actions/cache@v4
+        with:
+          path: dl
+          key: buildroot-dl-${{ runner.os }}-${{ hashFiles('.gitmodules', 'configs/**', 'patches/**') }}
+          restore-keys: |
+            buildroot-dl-${{ runner.os }}-
+
+      - name: Build root filesystem with GCC 16.1.0
+        env:
+          JOBS: "2"
+        run: make rootfs
+
+      - name: Verify root filesystem
+        run: make check
+
+      - name: Assemble release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_dir="${GITHUB_WORKSPACE}/release"
+          archive="gemmont-rootfs-${GITHUB_REF_NAME}-loongarch32.tar.zst"
+          mkdir -p "${release_dir}"
+          cp artifacts/rootfs.cpio.gz artifacts/rootfs.tar.zst \
+            artifacts/rootfs.ubifs artifacts/rootfs.ubi \
+            artifacts/buildroot.config artifacts/toolchain.manifest \
+            "${release_dir}/"
+          tar --zstd -cf "${release_dir}/${archive}" -C artifacts \
+            rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi \
+            buildroot.config toolchain.manifest SHA256SUMS
+          (
+            cd "${release_dir}"
+            sha256sum rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi \
+              buildroot.config toolchain.manifest "${archive}" > SHA256SUMS
+          )
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemmont-rootfs-${{ github.ref_name }}-loongarch32
+          path: release/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" release/* --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" release/* \
+              --verify-tag \
+              --title "Gemmont rootfs ${GITHUB_REF_NAME}" \
+              --generate-notes
+          fi

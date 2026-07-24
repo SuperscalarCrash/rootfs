@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Keep the initramfs entry point independent from Buildroot's selected init
+# implementation.  The kernel is booted with rdinit=/init.
+#
+# CONFIG_DEVTMPFS_MOUNT does not mount devtmpfs automatically when the root
+# filesystem itself is an initramfs.  Mount it before BusyBox init starts so
+# early inittab commands can safely open /dev/null and /dev/tty.
+mount -t devtmpfs -o mode=0755 devtmpfs /dev || {
+	echo "init: failed to mount devtmpfs" >&2
+	exec /bin/sh
+}
+
+exec /sbin/init "$@"

@@ -1,0 +1,6 @@
+menu "Gemmont root filesystem"
+
+comment "Board configuration is provided by gemmont_chiplab_la32r_defconfig"
+
+endmenu
+

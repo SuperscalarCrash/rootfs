@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+required_files="
+/bin/busybox
+/usr/bin/ssh
+/usr/bin/ssh-keygen
+/usr/sbin/sshd
+/usr/sbin/mtdinfo
+/usr/sbin/ubiattach
+/usr/sbin/ubiformat
+"
+
+for path in ${required_files}; do
+	if [ ! -x "${path}" ]; then
+		echo "rootfs self-test: missing executable ${path}" >&2
+		exit 1
+	fi
+done
+
+/usr/sbin/sshd -t
+
+if command -v ip >/dev/null 2>&1; then
+	ip link show >/dev/null
+fi
+
+if [ -r /proc/mtd ]; then
+	echo "rootfs self-test: detected MTD layout"
+	cat /proc/mtd
+fi
+
+echo "rootfs self-test: PASS ($(uname -m), $(busybox | sed -n '1p'))"
+

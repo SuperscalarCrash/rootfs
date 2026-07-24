@@ -1,0 +1,5 @@
+Gemmont Chiplab LA32R
+
+This system is a compact Buildroot environment.  SSH accepts public keys
+only; set SSH_AUTHORIZED_KEYS_FILE when building to install your key.
+
