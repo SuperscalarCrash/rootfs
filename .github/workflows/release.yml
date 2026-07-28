@@ -14,12 +14,13 @@ concurrency:
 
 env:
   GCC16_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchains/gcc-16.1.0-la32r
+  GCC16_NATIVE_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchains/gcc-16.1.0-la32r-native
 
 jobs:
   toolchain:
-    name: Build GCC 16.1.0 LA32R toolchain
+    name: Build GCC 16.1.0 LA32R cross and native toolchains
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 360
 
     steps:
       - name: Check out rootfs sources
@@ -29,8 +30,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            bison build-essential bzip2 curl file flex gawk texinfo xz-utils \
-            zlib1g-dev
+            bison build-essential bzip2 ca-certificates curl file flex gawk \
+            texinfo xz-utils zlib1g-dev
 
       - name: Restore GCC 16 toolchain cache
         id: gcc_cache
@@ -44,12 +45,31 @@ jobs:
           JOBS: "2"
         run: ./scripts/build-gcc16-toolchain.sh
 
+      - name: Restore native GCC 16 toolchain cache
+        id: native_gcc_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .toolchains/gcc-16.1.0-la32r-native
+          key: gcc-16.1.0-la32r-native-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh', 'scripts/fetch-toolchain.sh') }}
+
+      - name: Build or verify native GCC 16.1.0
+        env:
+          JOBS: "2"
+        run: ./scripts/build-gcc16-native-toolchain.sh
+
       - name: Save GCC 16 toolchain cache
         if: steps.gcc_cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .toolchains/gcc-16.1.0-la32r
           key: gcc-16.1.0-la32r-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-gcc16-toolchain.sh', 'scripts/fetch-toolchain.sh') }}
+
+      - name: Save native GCC 16 toolchain cache
+        if: steps.native_gcc_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .toolchains/gcc-16.1.0-la32r-native
+          key: gcc-16.1.0-la32r-native-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh', 'scripts/fetch-toolchain.sh') }}
 
   rootfs:
     name: Build LA32R rootfs
@@ -85,6 +105,13 @@ jobs:
           key: gcc-16.1.0-la32r-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-gcc16-toolchain.sh', 'scripts/fetch-toolchain.sh') }}
           fail-on-cache-miss: true
 
+      - name: Restore native GCC 16 toolchain cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .toolchains/gcc-16.1.0-la32r-native
+          key: gcc-16.1.0-la32r-native-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh', 'scripts/fetch-toolchain.sh') }}
+          fail-on-cache-miss: true
+
       - name: Restore Buildroot download cache
         uses: actions/cache@v4
         with:
@@ -111,14 +138,17 @@ jobs:
           cp artifacts/rootfs.cpio.gz artifacts/rootfs.tar.zst \
             artifacts/rootfs.ubifs artifacts/rootfs.ubi \
             artifacts/buildroot.config artifacts/toolchain.manifest \
+            artifacts/native-toolchain.manifest \
             "${release_dir}/"
           tar --zstd -cf "${release_dir}/${archive}" -C artifacts \
             rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi \
-            buildroot.config toolchain.manifest SHA256SUMS
+            buildroot.config toolchain.manifest native-toolchain.manifest \
+            SHA256SUMS
           (
             cd "${release_dir}"
             sha256sum rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi \
-              buildroot.config toolchain.manifest "${archive}" > SHA256SUMS
+              buildroot.config toolchain.manifest \
+              native-toolchain.manifest "${archive}" > SHA256SUMS
           )
 
       - name: Upload workflow artifact

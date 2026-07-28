@@ -1,11 +1,11 @@
 #!/bin/sh
 set -eu
 
-root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 gcc_version=16.1.0
 binutils_version=2.46.1
 target=loongarch32-linux-gnusf
-toolchain_revision=1
+toolchain_revision=2
 toolchain_dir=${GCC16_TOOLCHAIN_DIR:-"${root_dir}/.toolchains/gcc-${gcc_version}-la32r"}
 download_dir=${DL_DIR:-"${root_dir}/dl"}
 build_dir=${TOOLCHAIN_BUILD_DIR:-"${root_dir}/.build/gcc-${gcc_version}-la32r"}
@@ -49,8 +49,10 @@ download()
 toolchain_is_valid()
 {
 	cc="${toolchain_dir}/bin/${target}-gcc"
+	cxx="${toolchain_dir}/bin/${target}-g++"
 	readelf="${toolchain_dir}/bin/${target}-readelf"
 	[ -x "${cc}" ] || return 1
+	[ -x "${cxx}" ] || return 1
 	[ -x "${readelf}" ] || return 1
 	[ -f "${marker}" ] || return 1
 	grep -qx "toolchain_revision=${toolchain_revision}" "${marker}" || return 1
@@ -66,6 +68,16 @@ toolchain_is_valid()
 	fi
 	if ! "${readelf}" -h "${sanity_binary}" |
 		grep -q 'Flags:.*0x41'; then
+		rm -f "${sanity_binary}"
+		return 1
+	fi
+	rm -f "${sanity_binary}"
+
+	sanity_binary=$(mktemp "${TMPDIR:-/tmp}/gemmont-gcc16-cxx.XXXXXXXX")
+	if ! printf '%s\n' \
+		'#include <new>' \
+		'int main() { int *p = new int(0); delete p; return 0; }' |
+		"${cxx}" -x c++ - -o "${sanity_binary}" >/dev/null 2>&1; then
 		rm -f "${sanity_binary}"
 		return 1
 	fi
@@ -120,9 +132,9 @@ sysroot="${toolchain_dir}/${target}/sysroot"
 # Only headers and link/runtime libraries belong in a compiler sysroot.
 # Remove target-side utilities, documentation and mutable state that came
 # with the legacy bundle; none of its GCC 8 executables are retained.
-rm -rf "${sysroot}/etc" "${sysroot}/var" \
-	"${sysroot}/usr/bin" "${sysroot}/usr/sbin" \
-	"${sysroot}/usr/libexec" "${sysroot}/usr/share"
+rm -rf "${sysroot:?}/etc" "${sysroot:?}/var" \
+	"${sysroot:?}/usr/bin" "${sysroot:?}/usr/sbin" \
+	"${sysroot:?}/usr/libexec" "${sysroot:?}/usr/share"
 
 mkdir -p "${build_dir}/binutils"
 (
@@ -152,10 +164,11 @@ mkdir -p "${build_dir}/gcc"
 		--with-tune=loongarch32 \
 		--with-abi=ilp32s \
 		--with-specs="-D__loongarch32r=1 -D_ABILP32=1 -D_LOONGARCH_SIM=_ABILP32" \
-		--enable-languages=c \
+		--enable-languages=c,c++ \
 		--enable-shared \
 		--enable-threads=posix \
 		--disable-bootstrap \
+		--disable-libstdcxx-pch \
 		--disable-multilib \
 		--disable-nls \
 		--disable-libatomic \
@@ -169,6 +182,9 @@ mkdir -p "${build_dir}/gcc"
 	PATH="${toolchain_dir}/bin:${PATH}" make install-gcc
 	PATH="${toolchain_dir}/bin:${PATH}" make -j"${jobs}" all-target-libgcc
 	PATH="${toolchain_dir}/bin:${PATH}" make install-target-libgcc
+	PATH="${toolchain_dir}/bin:${PATH}" \
+		make -j"${jobs}" all-target-libstdc++-v3
+	PATH="${toolchain_dir}/bin:${PATH}" make install-target-libstdc++-v3
 )
 
 cc="${toolchain_dir}/bin/${target}-gcc"
@@ -207,6 +223,7 @@ mkdir -p "${toolchain_dir}/share"
 	printf 'target=%s\n' "${target}"
 	printf 'arch=la32rv1.0\n'
 	printf 'abi=ilp32s\n'
+	printf 'languages=c,c++\n'
 	printf 'libc=glibc-2.28-la32r-sysroot\n'
 	printf 'compat_cpp_macros=__loongarch32r,_ABILP32,_LOONGARCH_SIM\n'
 	printf 'gcc_sha256=%s\n' "${gcc_sha256}"

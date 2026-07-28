@@ -11,14 +11,24 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
 - OpenSSH 客户端、服务端、SFTP 和密钥工具；
 - `iproute2`、`ethtool`、OpenSSL 和 CA 证书；
 - 面向 Chiplab NAND 的只读检查工具以及 UBI/UBIFS 管理工具；
+- 可在板上直接运行的 GCC 16.1.0、Binutils 2.46.1、C 头文件和链接库；
 - initramfs、tar.zst、UBIFS 和 UBI 四种输出格式。
 
 ## GCC 16 用户态工具链
 
-rootfs 由仓库脚本从 GNU 官方源码构建的 GCC 16.1.0 和 Binutils 2.46.1
-编译，目标三元组为 `loongarch32-linux-gnusf`，固定使用
-`-march=la32rv1.0 -mabi=ilp32s`。构建结果是 Gemmont 所需的 ELF32、
+仓库会从未经修改的 GNU GCC 16.1.0 和 Binutils 2.46.1 源码构建两套
+工具：
+
+1. 在构建主机运行的 C/C++ 交叉工具链，用于构建 rootfs，并继续
+   交叉构建下一套工具链；
+2. 在 Gemmont LA32R Linux 上运行的原生 C 编译器和 Binutils，用于
+   在板上现场执行 `gcc hello.c -o hello`。
+
+两者的目标三元组都是 `loongarch32-linux-gnusf`，固定使用
+`-march=la32rv1.0 -mabi=ilp32s`。产物是 Gemmont 所需的 ELF32、
 LA32R、ILP32S、soft-float、OBJ-v1 程序，并不是 LA32 或 LA64 程序。
+这里不需要修改 GCC 的 LA32R 后端；GCC 16 已有上游支持。仓库脚本负责
+补齐目标 libc/sysroot、构建次序、安装布局和 ABI 校验。
 
 上游 glibc 尚没有可直接替换的完整 LA32R 用户态 port。因此工具链只从
 Loongson Education 的旧工具链中提取并校验 glibc 2.28 sysroot（libc、
@@ -35,6 +45,13 @@ GCC 8 可执行文件不会进入新工具链，也不会参与 rootfs 编译。
 submodule 本身保持干净，补丁增加 LA32R/ILP32S 和外部 GCC 16 版本
 描述；GCC 16 由本仓库单独构建后作为预安装外部工具链交给 Buildroot。
 
+板上工具链自包含安装在 `/opt/gemmont-gcc-16.1.0`。它自己的
+`sysroot/` 保存 C 头文件、`crt*.o`、libc 链接文件和 `libgcc.a`，
+避免 Buildroot 在生成生产 rootfs 时清除开发文件。`/usr/bin/gcc`、
+`/usr/bin/cc`、`/usr/bin/as`、`/usr/bin/ld` 等链接让工具可以直接
+使用。全部四种 rootfs 镜像都包含完整工具链；若后续改用 NFS root，
+可直接把 `rootfs.tar.zst` 解包到 NFS 导出目录。
+
 ## 构建
 
 主机需要常见的 GCC/Buildroot 依赖，包括 GCC/G++、make、bison、flex、
@@ -49,6 +66,7 @@ make
 默认路径：
 
 - GCC 16 工具链：`.toolchains/gcc-16.1.0-la32r/`
+- 板上原生 GCC 16 payload：`.toolchains/gcc-16.1.0-la32r-native/`
 - Buildroot 输出：`output/`
 - 下载缓存：`dl/`
 - 可发布产物：`artifacts/`
@@ -59,18 +77,49 @@ make
 ```sh
 JOBS=4 \
 GCC16_TOOLCHAIN_DIR=/tmp/gemmont-gcc16 \
+GCC16_NATIVE_TOOLCHAIN_DIR=/tmp/gemmont-gcc16-native \
 OUTPUT_DIR=/tmp/gemmont-rootfs-output \
 make
 ```
 
-也可只构建或验证工具链：
+也可分步构建或验证工具链：
 
 ```sh
-make toolchain
+make cross-toolchain   # 构建主机上运行的 LA32R 交叉工具链
+make native-toolchain  # 交叉构建板上运行的 GCC；会先确保前者存在
+make toolchain         # 等价于 make native-toolchain
 ```
 
-脚本会校验 GCC、Binutils 和 sysroot 三个下载文件的 SHA-256。已有且
-通过版本、目标三元组和链接测试的 GCC 16 工具链会直接复用。
+脚本会校验 GCC、Binutils、zlib 和 sysroot 下载文件的 SHA-256。已有且
+通过版本、目标三元组、ELF ABI 和链接测试的工具链会直接复用。原生
+GCC 只启用 C 前端；主机交叉 GCC 同时启用 C 和 C++，因为 GCC 本身由
+C++ 编写，交叉构建原生编译器时需要它。
+
+## 板上现场编译
+
+启动新 rootfs 后，不需要设置额外环境变量：
+
+```sh
+gcc --version
+gcc -dumpmachine
+
+cat > hello.c <<'EOF'
+#include <stdio.h>
+
+int main(void)
+{
+    puts("Hello from Gemmont GCC 16!");
+    return 0;
+}
+EOF
+
+gcc -O0 -Wall -Wextra -Werror hello.c -o hello
+./hello
+```
+
+预期 `gcc -dumpmachine` 输出 `loongarch32-linux-gnusf`，程序输出
+`Hello from Gemmont GCC 16!`。仓库的 `make board-smoke-test` 会通过
+SSH 在板上自动完成同一项编译、执行和 ELF ABI 检查。
 
 将 SSH 公钥写入镜像：
 
@@ -118,20 +167,23 @@ make clean
 - `rootfs.cpio.gz`：嵌入 Linux 的 initramfs；
 - `rootfs.tar.zst`：完整根文件系统归档；
 - `rootfs.ubifs`：UBIFS 文件系统；
-- `rootfs.ubi`：适配 128 KiB PEB、2 KiB page、512-byte subpage 的
+- `rootfs.ubi`：适配 128 KiB PEB、2 KiB page、2 KiB subpage 的
   UBI 镜像；
-- `buildroot.config`、`toolchain.manifest` 和 `SHA256SUMS`。
+- `buildroot.config`、`toolchain.manifest`、
+  `native-toolchain.manifest` 和 `SHA256SUMS`。
 
 UBI 参数与 Linux Chiplab DTS 中的 108 MiB `ubi` 分区一致：
-`PEB=0x20000`、`min I/O=0x800`、`LEB=0x1f800`、最大 864 个 LEB。
+`PEB=0x20000`、`min I/O=0x800`、`LEB=0x1f000`、最大 864 个 LEB。
+Chiplab NAND 驱动设置了 `NAND_NO_SUBPAGE_WRITE`，因此 UBI subpage
+必须与 2 KiB NAND page 一致。
 
 ## GitHub Release
 
 推送任意符合 `v*`（以 `v` 开头且后面非空）的 tag 时，
 `.github/workflows/release.yml` 会：
 
-1. 从源码构建并验证 GCC 16.1.0/Binutils 2.46.1；
-2. 按源码和脚本哈希缓存完整 LA32R 工具链，后续 tag 可直接复用；
+1. 从源码构建并验证 GCC 16.1.0/Binutils 2.46.1 交叉及原生工具链；
+2. 按源码和脚本哈希分别缓存两套 LA32R 工具链，后续 tag 可直接复用；
 3. 用该工具链构建并检查全部 rootfs 镜像；
 4. 上传 90 天保留的 Actions artifact，并创建或更新同名 GitHub
    Release。

@@ -1,10 +1,15 @@
-.PHONY: all toolchain rootfs configure menuconfig savedefconfig check kernel \
-	board-smoke-test clean
+.PHONY: all toolchain cross-toolchain native-toolchain rootfs configure \
+	menuconfig savedefconfig check kernel board-smoke-test clean
 
 all: rootfs
 
-toolchain:
+toolchain: native-toolchain
+
+cross-toolchain:
 	./scripts/build-gcc16-toolchain.sh
+
+native-toolchain: cross-toolchain
+	./scripts/build-gcc16-native-toolchain.sh
 
 rootfs:
 	./scripts/build.sh

@@ -1,3 +1,1 @@
-# No out-of-tree packages are required.  This file makes the repository a
-# complete BR2_EXTERNAL tree and leaves room for board-specific packages.
-
+include $(sort $(wildcard $(BR2_EXTERNAL_GEMMONT_ROOTFS_PATH)/package/*/*.mk))

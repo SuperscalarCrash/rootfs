@@ -2,5 +2,6 @@ menu "Gemmont root filesystem"
 
 comment "Board configuration is provided by gemmont_chiplab_la32r_defconfig"
 
-endmenu
+source "$BR2_EXTERNAL_GEMMONT_ROOTFS_PATH/package/gemmont-native-toolchain/Config.in"
 
+endmenu

@@ -1,0 +1,11 @@
+config BR2_PACKAGE_GEMMONT_NATIVE_TOOLCHAIN
+	bool "Gemmont GCC 16 native toolchain"
+	help
+	  Install the self-contained LA32R-native GCC 16.1.0 C compiler,
+	  Binutils 2.46.1 and development sysroot under
+	  /opt/gemmont-gcc-16.1.0, with their accompanying licenses.
+
+	  The payload is built in advance by
+	  scripts/build-gcc16-native-toolchain.sh.  Convenience links
+	  such as /usr/bin/gcc, /usr/bin/as and /usr/bin/ld are added so
+	  programs can be compiled directly on the Gemmont board.
