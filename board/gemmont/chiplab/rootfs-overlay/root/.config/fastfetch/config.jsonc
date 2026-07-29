@@ -1,0 +1,40 @@
+{
+  "logo": {
+    "type": "file",
+    "source": "/usr/share/fastfetch/logos/zju-qiushi-eagle.txt",
+    "color": {
+      "6": "blue"
+    },
+    "padding": {
+      "right": 4
+    }
+  },
+  "display": {
+    "color": {
+      "title": "blue",
+      "keys": "blue",
+      "output": "default",
+      "separator": "default"
+    }
+  },
+  "modules": [
+    "title",
+    "separator",
+    "os",
+    "host",
+    "kernel",
+    "uptime",
+    "initSystem",
+    "shell",
+    "cpu",
+    "memory",
+    "disk",
+    "localip",
+    "loadavg",
+    "processes",
+    "datetime",
+    "version",
+    "break",
+    "colors"
+  ]
+}

@@ -2,6 +2,13 @@
 set -eu
 
 required_files="
+/root/.bash_profile
+/root/.bashrc
+/root/.config/fastfetch/config.jsonc
+/usr/share/fastfetch/logos/zju-qiushi-eagle.txt
+"
+
+required_executables="
 /bin/busybox
 /bin/bash
 /usr/bin/fastfetch
@@ -17,6 +24,13 @@ required_files="
 "
 
 for path in ${required_files}; do
+	if [ ! -f "${path}" ]; then
+		echo "rootfs self-test: missing file ${path}" >&2
+		exit 1
+	fi
+done
+
+for path in ${required_executables}; do
 	if [ ! -x "${path}" ]; then
 		echo "rootfs self-test: missing executable ${path}" >&2
 		exit 1

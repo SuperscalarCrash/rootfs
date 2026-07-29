@@ -13,7 +13,11 @@ required_target_files="
 /init
 /bin/bash
 /bin/busybox
+/root/.bash_profile
+/root/.bashrc
+/root/.config/fastfetch/config.jsonc
 /usr/bin/fastfetch
+/usr/share/fastfetch/logos/zju-qiushi-eagle.txt
 /usr/bin/gcc
 /usr/bin/cc
 /usr/bin/as
@@ -171,7 +175,11 @@ fi
 
 for archive_entry in \
 	bin/bash \
+	root/.bash_profile \
+	root/.bashrc \
+	root/.config/fastfetch/config.jsonc \
 	usr/bin/fastfetch \
+	usr/share/fastfetch/logos/zju-qiushi-eagle.txt \
 	usr/sbin/sshd \
 	opt/gemmont-gcc-16.1.0/bin/gcc; do
 	if ! gzip -dc "${images_dir}/rootfs.cpio.gz" |
