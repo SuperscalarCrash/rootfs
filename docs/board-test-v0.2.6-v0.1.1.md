@@ -9,7 +9,7 @@ Test date: 2026-07-24
     `f84c5d9600adf1749ba15fe95b6a298ddba6d453c63f26b24bf64046a677ddc5`
   - Gemmont source: `b7ef4dd18ca0ae174fcc1fa7bc997f7ed58011ae`
   - Chiplab source: `b518aec9fa634bf2c1dd2c2778f50e7bb1edca37`
-- `linux-7.1.4-SuperscalarCrach-la32r-v0.1.1-loongarch32.tar.zst`
+- `linux-7.1.4-SuperscalarCrash-la32r-v0.1.1-loongarch32.tar.zst`
   - SHA-256:
     `602995f356807379b57dc13ae63f30426af6fdfce71d68357c57b69ccc760ad9`
 
@@ -22,7 +22,7 @@ The second image was built from the Linux v0.1.1 source with this project's
 module directory:
 
 ```text
-7.1.4-SuperscalarCrach-la32r-v0.1.1
+7.1.4-SuperscalarCrash-la32r-v0.1.1
 ```
 
 ## Passed checks

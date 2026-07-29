@@ -5,7 +5,7 @@ board_address=${BOARD_ADDRESS:-172.25.2.56}
 board_user=${BOARD_USER:-root}
 jump_host=${JUMP_HOST:-fpgadev}
 test_peer=${TEST_PEER:-172.25.2.193}
-expected_release=${EXPECTED_KERNEL_RELEASE:-7.1.4-SuperscalarCrach-la32r-v0.1.1}
+expected_release=${EXPECTED_KERNEL_RELEASE:-7.1.4-SuperscalarCrash-la32r-v0.1.1}
 
 ssh \
 	-o "ProxyCommand=ssh ${jump_host} -W %h:%p" \

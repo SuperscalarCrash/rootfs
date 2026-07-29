@@ -130,7 +130,7 @@ SSH_AUTHORIZED_KEYS_FILE="$HOME/.ssh/id_ed25519.pub" make
 若已有同版本 Linux 发布包，可把其中的已签名模块一并装入 rootfs：
 
 ```sh
-LINUX_RELEASE_ARCHIVE=../linux-7.1.4-SuperscalarCrach-la32r-v0.1.1-loongarch32.tar.zst \
+LINUX_RELEASE_ARCHIVE=../linux-7.1.4-SuperscalarCrash-la32r-v0.1.1-loongarch32.tar.zst \
 SSH_AUTHORIZED_KEYS_FILE="$HOME/.ssh/id_ed25519.pub" make
 ```
 
@@ -139,7 +139,7 @@ SSH_AUTHORIZED_KEYS_FILE="$HOME/.ssh/id_ed25519.pub" make
 
 ```sh
 CPU_HZ=72000000 \
-KERNEL_LOCALVERSION=-SuperscalarCrach-la32r-v0.1.1 \
+KERNEL_LOCALVERSION=-SuperscalarCrash-la32r-v0.1.1 \
 make kernel
 ```
 
