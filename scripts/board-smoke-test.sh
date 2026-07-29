@@ -6,11 +6,12 @@ board_user=${BOARD_USER:-root}
 jump_host=${JUMP_HOST:-fpgadev}
 test_peer=${TEST_PEER:-172.25.2.193}
 expected_release=${EXPECTED_KERNEL_RELEASE:-7.1.4-SuperscalarCrash-la32r-v0.1.1}
+connect_timeout=${SSH_CONNECT_TIMEOUT:-60}
 
 ssh \
 	-o "ProxyCommand=ssh ${jump_host} -W %h:%p" \
 	-o BatchMode=yes \
-	-o ConnectTimeout=10 \
+	-o "ConnectTimeout=${connect_timeout}" \
 	-o StrictHostKeyChecking=no \
 	-o UserKnownHostsFile=/dev/null \
 	"${board_user}@${board_address}" \
@@ -32,6 +33,29 @@ echo "SSH_TRANSPORT_OK"
 uname -a
 cat /etc/os-release
 gemmont-rootfs-selftest
+
+if [ "$(awk -F: '$1 == "root" { print $7 }' /etc/passwd)" != /bin/bash ]; then
+	echo "root login shell is not /bin/bash" >&2
+	exit 1
+fi
+case "$(/bin/bash --version | sed -n '1p')" in
+	'GNU bash, version 5.2.37'*)
+		;;
+	*)
+		echo "unexpected Bash version" >&2
+		exit 1
+		;;
+esac
+case "$(fastfetch --version)" in
+	'fastfetch 2.66.0 '*)
+		;;
+	*)
+		echo "unexpected Fastfetch version" >&2
+		exit 1
+		;;
+esac
+fastfetch --logo none --structure OS:Kernel:Uptime:CPU:Memory:LocalIp
+echo "BASH_FASTFETCH_OK"
 
 ip -s link show eth0
 ping -c 3 -W 2 "${test_peer}"

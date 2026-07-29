@@ -1,0 +1,14 @@
+config BR2_PACKAGE_FASTFETCH
+	bool "fastfetch"
+	depends on BR2_USE_MMU
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	help
+	  Fastfetch is a system information tool similar to Neofetch.
+	  This package uses an embedded-friendly configuration without
+	  desktop graphics, multimedia or scripting integrations.  Its
+	  default summary omits package-manager detection.
+
+	  https://github.com/fastfetch-cli/fastfetch
+
+comment "fastfetch needs a toolchain with threads"
+	depends on !BR2_TOOLCHAIN_HAS_THREADS

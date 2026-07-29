@@ -7,7 +7,9 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
 
 当前 rootfs 包含：
 
-- BusyBox init、串口 shell 和常用命令；
+- BusyBox init、常用命令，以及作为串口和 SSH 登录 shell 的 Bash
+  5.2.37；
+- 面向串口展示的 Fastfetch 2.66.0；
 - OpenSSH 客户端、服务端、SFTP 和密钥工具；
 - `iproute2`、`ethtool`、OpenSSL 和 CA 证书；
 - 面向 Chiplab NAND 的只读检查工具以及 UBI/UBIFS 管理工具；
@@ -51,6 +53,18 @@ submodule 本身保持干净，补丁增加 LA32R/ILP32S 和外部 GCC 16 版本
 `/usr/bin/cc`、`/usr/bin/as`、`/usr/bin/ld` 等链接让工具可以直接
 使用。全部四种 rootfs 镜像都包含完整工具链；若后续改用 NFS root，
 可直接把 `rootfs.tar.zst` 解包到 NFS 导出目录。
+
+系统保留 `/bin/sh` 指向 BusyBox ash，供启动脚本使用；root 用户通过
+串口或 SSH 登录时默认进入 `/bin/bash`。登录后可直接运行：
+
+```sh
+fastfetch
+bash --version
+```
+
+Fastfetch 保留 OS、内核、运行时间、CPU、内存、磁盘和网络等适合板级
+展示的信息，关闭 Vulkan、Wayland、X11、DRM、多媒体和脚本语言等板上
+无用的集成，默认不执行包管理器统计。
 
 ## 构建
 

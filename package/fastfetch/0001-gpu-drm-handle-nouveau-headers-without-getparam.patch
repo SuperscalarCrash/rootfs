@@ -1,0 +1,47 @@
+From 8fdb5d032cd2160c971668c476b4ae0ee6800657 Mon Sep 17 00:00:00 2001
+From: Gemmont rootfs maintainers <noreply@superscalarcrash.com>
+Date: Wed, 29 Jul 2026 16:30:00 +0800
+Subject: [PATCH] gpu: drm: handle Nouveau headers without GETPARAM
+
+The LA32R glibc sysroot contains a Linux UAPI nouveau_drm.h that exposes
+the deprecated DRM_NOUVEAU_GETPARAM command number but no longer defines
+drm_nouveau_getparam or its parameter constants.  The header is still
+found by __has_include(), so compiling the probe otherwise fails on the
+incomplete structure.
+
+Keep the probe when the required API is available and return the normal
+unsupported-result string when it is not.  Gemmont has no DRM device, so
+this does not remove any usable target functionality.
+
+Upstream: Not submitted
+Signed-off-by: Gemmont rootfs maintainers <noreply@superscalarcrash.com>
+---
+ src/detection/gpu/gpu_drm.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/detection/gpu/gpu_drm.c b/src/detection/gpu/gpu_drm.c
+index acba87e..ac4184d 100644
+--- a/src/detection/gpu/gpu_drm.c
++++ b/src/detection/gpu/gpu_drm.c
+@@ -345,6 +345,7 @@ const char* ffDrmDetectAsahi(FFGPUResult* gpu, int fd) {
+     #endif
+ 
+ const char* ffDrmDetectNouveau(FFGPUResult* gpu, int fd) {
++#ifdef NOUVEAU_GETPARAM_FB_SIZE
+     struct drm_nouveau_getparam getparam = {};
+ 
+     getparam.param = NOUVEAU_GETPARAM_FB_SIZE;
+@@ -363,6 +364,11 @@ const char* ffDrmDetectNouveau(FFGPUResult* gpu, int fd) {
+     }
+ 
+     return NULL;
++#else
++    (void) gpu;
++    (void) fd;
++    return "Nouveau GETPARAM is unavailable in the target Linux headers";
++#endif
+ }
+ 
+ #endif // FF_HAVE_DRM
+-- 
+2.50.1

@@ -3,6 +3,8 @@ set -eu
 
 required_files="
 /bin/busybox
+/bin/bash
+/usr/bin/fastfetch
 /usr/bin/gcc
 /usr/bin/as
 /usr/bin/ld
@@ -20,6 +22,29 @@ for path in ${required_files}; do
 		exit 1
 	fi
 done
+
+if [ "$(awk -F: '$1 == "root" { print $7 }' /etc/passwd)" != /bin/bash ]; then
+	echo "rootfs self-test: root login shell is not Bash" >&2
+	exit 1
+fi
+
+case "$(/bin/bash --version | sed -n '1p')" in
+	'GNU bash, version 5.2.37'*)
+		;;
+	*)
+		echo "rootfs self-test: unexpected Bash version" >&2
+		exit 1
+		;;
+esac
+
+case "$(fastfetch --version)" in
+	'fastfetch 2.66.0 '*)
+		;;
+	*)
+		echo "rootfs self-test: unexpected Fastfetch version" >&2
+		exit 1
+		;;
+esac
 
 if [ "$(gcc -dumpfullversion)" != 16.1.0 ]; then
 	echo "rootfs self-test: unexpected GCC version" >&2

@@ -11,7 +11,9 @@ native_target=loongarch32-linux-gnusf
 
 required_target_files="
 /init
+/bin/bash
 /bin/busybox
+/usr/bin/fastfetch
 /usr/bin/gcc
 /usr/bin/cc
 /usr/bin/as
@@ -43,6 +45,12 @@ for path in ${required_target_files}; do
 		exit 1
 	fi
 done
+
+if [ "$(awk -F: '$1 == "root" { print $7 }' "${target_dir}/etc/passwd")" != \
+	/bin/bash ]; then
+	echo "Root login shell is not /bin/bash" >&2
+	exit 1
+fi
 
 for link_mapping in gcc:gcc cc:gcc as:as ld:ld; do
 	link=${link_mapping%%:*}
@@ -107,7 +115,12 @@ if [ "${checked}" -eq 0 ] || [ "${obj_v1}" -eq 0 ]; then
 	exit 1
 fi
 
-for candidate in /bin/busybox /usr/bin/ssh /usr/sbin/sshd; do
+for candidate in \
+	/bin/bash \
+	/bin/busybox \
+	/usr/bin/fastfetch \
+	/usr/bin/ssh \
+	/usr/sbin/sshd; do
 	if ! "${readelf_bin}" -h "${target_dir}${candidate}" 2>/dev/null |
 		grep -Eq 'Flags:.*0x41([,[:space:]]|$)'; then
 		echo "${candidate} was not compiled as LA32R OBJ-v1" >&2
@@ -156,7 +169,11 @@ if ! "${readelf_bin}" -l "${sanity_binary}" |
 	exit 1
 fi
 
-for archive_entry in usr/sbin/sshd opt/gemmont-gcc-16.1.0/bin/gcc; do
+for archive_entry in \
+	bin/bash \
+	usr/bin/fastfetch \
+	usr/sbin/sshd \
+	opt/gemmont-gcc-16.1.0/bin/gcc; do
 	if ! gzip -dc "${images_dir}/rootfs.cpio.gz" |
 		cpio -it --quiet 2>/dev/null |
 		grep -qx "${archive_entry}"; then
