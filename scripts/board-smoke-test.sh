@@ -38,6 +38,16 @@ if [ "$(awk -F: '$1 == "root" { print $7 }' /etc/passwd)" != /bin/bash ]; then
 	echo "root login shell is not /bin/bash" >&2
 	exit 1
 fi
+if ! command -v evtest >/dev/null 2>&1; then
+	echo "evtest is missing" >&2
+	exit 1
+fi
+if [ "$(grep -Ec '^tty1::respawn:/sbin/getty -L tty1 0 linux # GEMMONT_FRAMEBUFFER$' \
+	/etc/inittab)" -ne 1 ]; then
+	echo "framebuffer tty1 getty is missing or duplicated" >&2
+	exit 1
+fi
+echo "LOCAL_CONSOLE_TOOLS_OK"
 case "$(/bin/bash --version | sed -n '1p')" in
 	'GNU bash, version 5.2.37'*)
 		;;

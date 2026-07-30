@@ -1,9 +1,1 @@
-Gemmont Chiplab LA32R
-
-Run fastfetch for a system summary.  Bash is the default login shell.
-
-GCC 16.1.0 is ready for native C compilation.  Try:
-  printf '#include <stdio.h>\nint main(void){puts("Hello, Gemmont!");}\n' > hello.c
-  gcc hello.c -o hello && ./hello
-
-SSH accepts public keys only; set SSH_AUTHORIZED_KEYS_FILE when building.
+Welcome to SuperscalarCrash/Gemmont!

@@ -21,5 +21,6 @@ Compile and draw NT35510 LCD color bars:
 
 The examples find the framebuffer names "Xilinx" and "chiplab-lcd", so they do
 not depend on whether Linux registers VGA or LCD as /dev/fb0. Pass an explicit
-/dev/fbN path to override discovery. Use the serial console to enter commands;
-both displays remain output devices until a keyboard controller is added.
+/dev/fbN path to override discovery. With the matching bitstream and Linux,
+VGA tty1 accepts local input from the PS/2 keyboard. LCD remains an output-only
+framebuffer. Run evtest to inspect keyboard events independently of the console.

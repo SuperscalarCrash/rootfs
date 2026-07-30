@@ -12,6 +12,7 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
 - 面向串口展示的 Fastfetch 2.66.0；
 - OpenSSH 客户端、服务端、SFTP 和密钥工具；
 - `iproute2`、`ethtool`、OpenSSL 和 CA 证书；
+- `evtest`，用于检查 PS/2 键盘等 Linux input 设备的事件；
 - 面向 Chiplab NAND 的只读检查工具以及 UBI/UBIFS 管理工具；
 - 可在板上直接运行的 GCC 16.1.0、Binutils 2.46.1、C 头文件和链接库；
 - 可现场编译的 Hello World、VGA 和 NT35510 LCD 色条示例源码；
@@ -56,12 +57,21 @@ submodule 本身保持干净，补丁增加 LA32R/ILP32S 和外部 GCC 16 版本
 可直接把 `rootfs.tar.zst` 解包到 NFS 导出目录。
 
 系统保留 `/bin/sh` 指向 BusyBox ash，供启动脚本使用；root 用户通过
-串口或 SSH 登录时默认进入 `/bin/bash`。登录后可直接运行：
+串口、VGA 本地终端或 SSH 登录时默认进入 `/bin/bash`。Buildroot 生成
+的 `ttyS0` getty 保持不变，post-build 另外在 `tty1` 启动 getty；配合
+包含 VGA framebuffer console、PS/2 控制器和 input/AT keyboard 驱动的
+bitstream 与 Linux，显示器会出现登录提示，键盘可直接输入。登录后可
+直接运行：
 
 ```sh
 fastfetch
 bash --version
+evtest
 ```
+
+`evtest` 会列出已注册的 input 设备，也可指定设备，例如
+`evtest /dev/input/event0`。设备编号不固定，应按输出中的键盘名称选择；
+未插键盘时没有按键事件是正常的，不影响 `ttyS0` 和 SSH 登录。
 
 Fastfetch 保留 OS、内核、运行时间、CPU、内存、磁盘和网络等适合板级
 展示的信息，关闭 Vulkan、Wayland、X11、DRM、多媒体和脚本语言等板上

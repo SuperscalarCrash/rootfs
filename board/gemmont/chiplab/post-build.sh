@@ -2,11 +2,30 @@
 set -eu
 
 target_dir=${1:?missing Buildroot target directory}
+inittab="${target_dir}/etc/inittab"
 
 install -d -m 0700 "${target_dir}/root/.ssh"
 install -d -m 0755 "${target_dir}/etc/ssh/sshd_config.d"
 chmod 0600 "${target_dir}/root/.ssh/authorized_keys"
 chmod 0600 "${target_dir}/etc/ssh/sshd_config"
+
+if [ ! -f "${inittab}" ]; then
+	echo "BusyBox inittab is missing from the target root filesystem" >&2
+	exit 1
+fi
+
+# Buildroot creates the ttyS0 getty selected by the defconfig.  Add a second,
+# independent getty for the framebuffer virtual terminal used by VGA and a
+# PS/2 keyboard.  Replace any existing tty1 entry so repeated post-build
+# invocations remain deterministic and never start competing getty processes.
+sed -i \
+	'/^# Gemmont framebuffer console$/d; /^tty1::/d' \
+	"${inittab}"
+cat >>"${inittab}" <<'EOF'
+
+# Gemmont framebuffer console
+tty1::respawn:/sbin/getty -L tty1 0 linux # GEMMONT_FRAMEBUFFER
+EOF
 
 if [ ! -x "${target_dir}/bin/bash" ]; then
 	echo "Bash is missing from the target root filesystem" >&2

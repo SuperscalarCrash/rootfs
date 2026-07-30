@@ -11,6 +11,7 @@ required_files="
 required_executables="
 /bin/busybox
 /bin/bash
+/usr/bin/evtest
 /usr/bin/fastfetch
 /usr/bin/gcc
 /usr/bin/as
@@ -39,6 +40,19 @@ done
 
 if [ "$(awk -F: '$1 == "root" { print $7 }' /etc/passwd)" != /bin/bash ]; then
 	echo "rootfs self-test: root login shell is not Bash" >&2
+	exit 1
+fi
+
+if ! grep -Eq \
+	'^ttyS0::respawn:/sbin/getty[[:space:]]+-L[[:space:]]+ttyS0[[:space:]]+115200[[:space:]]+vt100([[:space:]]|$)' \
+	/etc/inittab; then
+	echo "rootfs self-test: serial ttyS0 getty is missing" >&2
+	exit 1
+fi
+
+if [ "$(grep -Ec '^tty1::respawn:/sbin/getty -L tty1 0 linux # GEMMONT_FRAMEBUFFER$' \
+	/etc/inittab)" -ne 1 ]; then
+	echo "rootfs self-test: framebuffer tty1 getty is missing or duplicated" >&2
 	exit 1
 fi
 

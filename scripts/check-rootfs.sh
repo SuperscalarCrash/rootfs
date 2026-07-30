@@ -13,9 +13,11 @@ required_target_files="
 /init
 /bin/bash
 /bin/busybox
+/etc/inittab
 /root/.bash_profile
 /root/.bashrc
 /root/.config/fastfetch/config.jsonc
+/usr/bin/evtest
 /usr/bin/fastfetch
 /usr/share/fastfetch/logos/zju-qiushi-eagle.txt
 /usr/bin/gcc
@@ -57,6 +59,19 @@ done
 if [ "$(awk -F: '$1 == "root" { print $7 }' "${target_dir}/etc/passwd")" != \
 	/bin/bash ]; then
 	echo "Root login shell is not /bin/bash" >&2
+	exit 1
+fi
+
+if ! grep -Eq \
+	'^ttyS0::respawn:/sbin/getty[[:space:]]+-L[[:space:]]+ttyS0[[:space:]]+115200[[:space:]]+vt100([[:space:]]|$)' \
+	"${target_dir}/etc/inittab"; then
+	echo "Serial ttyS0 getty is missing from /etc/inittab" >&2
+	exit 1
+fi
+
+if [ "$(grep -Ec '^tty1::respawn:/sbin/getty -L tty1 0 linux # GEMMONT_FRAMEBUFFER$' \
+	"${target_dir}/etc/inittab")" -ne 1 ]; then
+	echo "Expected exactly one framebuffer tty1 getty in /etc/inittab" >&2
 	exit 1
 fi
 
@@ -126,6 +141,7 @@ fi
 for candidate in \
 	/bin/bash \
 	/bin/busybox \
+	/usr/bin/evtest \
 	/usr/bin/fastfetch \
 	/usr/bin/ssh \
 	/usr/sbin/sshd; do
@@ -179,9 +195,11 @@ fi
 
 for archive_entry in \
 	bin/bash \
+	etc/inittab \
 	root/.bash_profile \
 	root/.bashrc \
 	root/.config/fastfetch/config.jsonc \
+	usr/bin/evtest \
 	usr/bin/fastfetch \
 	usr/share/fastfetch/logos/zju-qiushi-eagle.txt \
 	usr/share/gemmont-examples/hello.c \
