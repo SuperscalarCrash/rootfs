@@ -99,6 +99,12 @@ gcc -O2 -Wall -Wextra -Werror \
 "${gcc_smoke_dir}/vga-colorbars"
 echo "VGA_FRAMEBUFFER_OK"
 
+gcc -O2 -Wall -Wextra -Werror \
+	/usr/share/gemmont-examples/lcd-colorbars.c \
+	-o "${gcc_smoke_dir}/lcd-colorbars"
+"${gcc_smoke_dir}/lcd-colorbars"
+echo "LCD_FRAMEBUFFER_OK"
+
 cat /proc/mtd
 mtdinfo -a
 

@@ -32,6 +32,7 @@ required_target_files="
 /usr/sbin/gemmont-rootfs-selftest
 /usr/share/gemmont-examples/hello.c
 /usr/share/gemmont-examples/vga-colorbars.c
+/usr/share/gemmont-examples/lcd-colorbars.c
 /usr/share/gemmont-examples/README
 ${native_prefix}/bin/gcc
 ${native_prefix}/bin/as
@@ -185,6 +186,7 @@ for archive_entry in \
 	usr/share/fastfetch/logos/zju-qiushi-eagle.txt \
 	usr/share/gemmont-examples/hello.c \
 	usr/share/gemmont-examples/vga-colorbars.c \
+	usr/share/gemmont-examples/lcd-colorbars.c \
 	usr/share/gemmont-examples/README \
 	usr/sbin/sshd \
 	opt/gemmont-gcc-16.1.0/bin/gcc; do

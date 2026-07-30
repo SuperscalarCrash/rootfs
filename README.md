@@ -14,7 +14,7 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
 - `iproute2`、`ethtool`、OpenSSL 和 CA 证书；
 - 面向 Chiplab NAND 的只读检查工具以及 UBI/UBIFS 管理工具；
 - 可在板上直接运行的 GCC 16.1.0、Binutils 2.46.1、C 头文件和链接库；
-- 可现场编译的 Hello World 与 `/dev/fb0` VGA 色条示例源码；
+- 可现场编译的 Hello World、VGA 和 NT35510 LCD 色条示例源码；
 - initramfs、tar.zst、UBIFS 和 UBI 四种输出格式。
 
 ## GCC 16 用户态工具链
@@ -133,9 +133,23 @@ gcc -O2 -Wall -Wextra -Werror \
 /tmp/vga-colorbars
 ```
 
-程序通过 `/dev/fb0` 绘制 640×480 色条；命令输入仍走串口。仓库的
+程序根据 `Xilinx` framebuffer 名称自动定位 VGA 并绘制 640×480
+色条；命令输入仍走串口。仓库的
 `make board-smoke-test` 会通过 SSH 自动完成 Hello World 的编译、
 执行和 ELF ABI 检查，并检查 framebuffer 后运行色条程序。
+
+连接 NT35510 LCD 并使用带 Chiplab LCD framebuffer 驱动的内核与
+bitstream 后，可在板上现场编译 LCD 示例：
+
+```sh
+gcc -O2 -Wall -Wextra -Werror \
+  /usr/share/gemmont-examples/lcd-colorbars.c -o /tmp/lcd-colorbars
+/tmp/lcd-colorbars
+```
+
+该程序根据 framebuffer 的 `chiplab-lcd` 名称自动定位 LCD，不依赖它
+是 `/dev/fb0` 还是 `/dev/fb1`。四角标记依次为红、绿、蓝、白，可用于
+检查方向、裁剪和 RGB565 通道顺序。
 
 将 SSH 公钥写入镜像：
 

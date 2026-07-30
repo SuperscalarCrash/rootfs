@@ -13,6 +13,13 @@ Compile and draw VGA color bars:
     /usr/share/gemmont-examples/vga-colorbars.c -o /tmp/vga-colorbars
   /tmp/vga-colorbars
 
-The VGA program expects the Xilinx framebuffer driver to provide /dev/fb0.
-Use the serial console to enter the commands; VGA is an output device until a
-keyboard controller is added.
+Compile and draw NT35510 LCD color bars:
+
+  gcc -O2 -Wall -Wextra -Werror \
+    /usr/share/gemmont-examples/lcd-colorbars.c -o /tmp/lcd-colorbars
+  /tmp/lcd-colorbars
+
+The examples find the framebuffer names "Xilinx" and "chiplab-lcd", so they do
+not depend on whether Linux registers VGA or LCD as /dev/fb0. Pass an explicit
+/dev/fbN path to override discovery. Use the serial console to enter commands;
+both displays remain output devices until a keyboard controller is added.

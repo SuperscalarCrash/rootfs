@@ -9,7 +9,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define EXPECTED_FB_ID "Xilinx"
+#define EXPECTED_FB_ID "chiplab-lcd"
 #define MAX_FB_DEVICES 16
 
 struct rgb {
@@ -28,7 +28,7 @@ static uint32_t channel_value(uint8_t value, struct fb_bitfield field)
 	return (((uint32_t)value * maximum + 127U) / 255U) << field.offset;
 }
 
-static uint32_t pixel_value(const struct fb_var_screeninfo *var,
+static uint16_t pixel_value(const struct fb_var_screeninfo *var,
 			    struct rgb color)
 {
 	return channel_value(color.red, var->red) |
@@ -36,7 +36,7 @@ static uint32_t pixel_value(const struct fb_var_screeninfo *var,
 	       channel_value(color.blue, var->blue);
 }
 
-static int open_vga(const char *requested, char *path, size_t path_size,
+static int open_lcd(const char *requested, char *path, size_t path_size,
 		    struct fb_fix_screeninfo *fix)
 {
 	unsigned int index;
@@ -72,6 +72,29 @@ static int open_vga(const char *requested, char *path, size_t path_size,
 	return -1;
 }
 
+static struct rgb corner_color(unsigned int x, unsigned int y,
+			       unsigned int width, unsigned int height,
+			       struct rgb original)
+{
+	unsigned int marker = 32;
+
+	if (marker * 2 > width)
+		marker = width / 2;
+	if (marker * 2 > height)
+		marker = height / 2;
+
+	if (x < marker && y < marker)
+		return (struct rgb) { 255, 0, 0 };
+	if (x + marker >= width && y < marker)
+		return (struct rgb) { 0, 255, 0 };
+	if (x < marker && y + marker >= height)
+		return (struct rgb) { 0, 0, 255 };
+	if (x + marker >= width && y + marker >= height)
+		return (struct rgb) { 255, 255, 255 };
+
+	return original;
+}
+
 int main(int argc, char **argv)
 {
 	static const struct rgb bars[] = {
@@ -101,9 +124,10 @@ int main(int argc, char **argv)
 	if (argc == 2)
 		requested = argv[1];
 
-	fd = open_vga(requested, path, sizeof(path), &fix);
+	fd = open_lcd(requested, path, sizeof(path), &fix);
 	if (fd < 0) {
-		fprintf(stderr, "find Xilinx framebuffer: %s\n", strerror(errno));
+		fprintf(stderr, "find NT35510 framebuffer: %s\n",
+			strerror(errno));
 		return EXIT_FAILURE;
 	}
 	if (ioctl(fd, FBIOGET_VSCREENINFO, &var) < 0) {
@@ -112,8 +136,9 @@ int main(int argc, char **argv)
 		close(fd);
 		return EXIT_FAILURE;
 	}
-	if (var.bits_per_pixel != 32) {
-		fprintf(stderr, "expected 32 bpp, got %u\n", var.bits_per_pixel);
+	if (var.bits_per_pixel != 16) {
+		fprintf(stderr, "%s: expected RGB565 16 bpp, got %u\n", path,
+			var.bits_per_pixel);
 		close(fd);
 		return EXIT_FAILURE;
 	}
@@ -128,24 +153,31 @@ int main(int argc, char **argv)
 	}
 
 	for (y = 0; y < var.yres; ++y) {
-		uint32_t *row = (uint32_t *)(framebuffer +
-					    (y + var.yoffset) *
-					    fix.line_length);
+		uint16_t *row = (uint16_t *)(framebuffer +
+					     (y + var.yoffset) *
+					     fix.line_length);
 
 		for (x = 0; x < var.xres; ++x) {
 			unsigned int bar = (x * (sizeof(bars) / sizeof(bars[0]))) /
 					   var.xres;
 			struct rgb color = bars[bar];
 
-			/* A white frame makes clipping and alignment obvious. */
 			if (x < 4 || y < 4 || x + 4 >= var.xres ||
 			    y + 4 >= var.yres)
 				color = bars[0];
+			color = corner_color(x, y, var.xres, var.yres, color);
 			row[x + var.xoffset] = pixel_value(&var, color);
 		}
 	}
 
-	printf("Drew VGA color bars on %s: %ux%u, stride %u bytes\n",
+	if (msync(framebuffer, map_size, MS_SYNC) < 0 || fsync(fd) < 0) {
+		fprintf(stderr, "flush %s: %s\n", path, strerror(errno));
+		munmap(framebuffer, map_size);
+		close(fd);
+		return EXIT_FAILURE;
+	}
+
+	printf("Drew NT35510 color bars on %s: %ux%u RGB565, stride %u bytes\n",
 	       path, var.xres, var.yres, fix.line_length);
 	munmap(framebuffer, map_size);
 	close(fd);
