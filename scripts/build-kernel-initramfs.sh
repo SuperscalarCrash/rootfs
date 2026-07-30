@@ -43,7 +43,7 @@ make -C "${linux_dir}" O="${kernel_output_dir}" ARCH=loongarch \
 "${linux_dir}/scripts/config" --file "${kernel_output_dir}/.config" \
 	--set-str INITRAMFS_SOURCE "${initramfs}" \
 	--set-str CMDLINE \
-	"console=ttyS0,115200 earlycon=uart8250,mmio,0x1fe001e0,115200 rdinit=/init cpuclock=${cpu_hz}"
+	"console=tty0 console=ttyS0,115200 earlycon=uart8250,mmio,0x1fe001e0,115200 rdinit=/init cpuclock=${cpu_hz}"
 if [ -n "${kernel_localversion}" ]; then
 	"${linux_dir}/scripts/config" --file "${kernel_output_dir}/.config" \
 		--set-str LOCALVERSION "${kernel_localversion}" \

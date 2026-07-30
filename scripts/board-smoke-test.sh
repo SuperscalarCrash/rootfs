@@ -5,7 +5,7 @@ board_address=${BOARD_ADDRESS:-172.25.2.56}
 board_user=${BOARD_USER:-root}
 jump_host=${JUMP_HOST:-fpgadev}
 test_peer=${TEST_PEER:-172.25.2.193}
-expected_release=${EXPECTED_KERNEL_RELEASE:-7.1.4-SuperscalarCrash-la32r-v0.1.1}
+expected_release=${EXPECTED_KERNEL_RELEASE:-7.1.4-SuperscalarCrash-la32r-v0.1.6}
 connect_timeout=${SSH_CONNECT_TIMEOUT:-60}
 
 ssh \
@@ -76,18 +76,10 @@ if [ "$(gcc -print-sysroot)" != /opt/gemmont-gcc-16.1.0/sysroot ]; then
 	exit 1
 fi
 
-cat >"${gcc_smoke_dir}/hello.c" <<'HELLO_EOF'
-#include <stdio.h>
-
-int main(void)
-{
-	puts("Hello from Gemmont GCC 16!");
-	return 0;
-}
-HELLO_EOF
 gcc -O0 -Wall -Wextra -Werror \
-	"${gcc_smoke_dir}/hello.c" -o "${gcc_smoke_dir}/hello"
-if [ "$("${gcc_smoke_dir}/hello")" != "Hello from Gemmont GCC 16!" ]; then
+	/usr/share/gemmont-examples/hello.c -o "${gcc_smoke_dir}/hello"
+if [ "$("${gcc_smoke_dir}/hello")" != \
+	"Hello from Gemmont GCC 16 on LA32R!" ]; then
 	echo "native GCC Hello World output mismatch" >&2
 	exit 1
 fi
@@ -96,6 +88,16 @@ readelf -h "${gcc_smoke_dir}/hello" |
 readelf -l "${gcc_smoke_dir}/hello" |
 	grep -q '/lib32/ld-linux-loongarch-ilp32s.so.1'
 echo "NATIVE_GCC_HELLO_OK"
+
+if [ ! -c /dev/fb0 ]; then
+	echo "/dev/fb0 is missing" >&2
+	exit 1
+fi
+gcc -O2 -Wall -Wextra -Werror \
+	/usr/share/gemmont-examples/vga-colorbars.c \
+	-o "${gcc_smoke_dir}/vga-colorbars"
+"${gcc_smoke_dir}/vga-colorbars"
+echo "VGA_FRAMEBUFFER_OK"
 
 cat /proc/mtd
 mtdinfo -a

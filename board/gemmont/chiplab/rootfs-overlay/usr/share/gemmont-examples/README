@@ -1,0 +1,18 @@
+Gemmont on-board GCC examples
+=============================
+
+Compile and run Hello World:
+
+  gcc -O0 -Wall -Wextra -Werror \
+    /usr/share/gemmont-examples/hello.c -o /tmp/hello
+  /tmp/hello
+
+Compile and draw VGA color bars:
+
+  gcc -O2 -Wall -Wextra -Werror \
+    /usr/share/gemmont-examples/vga-colorbars.c -o /tmp/vga-colorbars
+  /tmp/vga-colorbars
+
+The VGA program expects the Xilinx framebuffer driver to provide /dev/fb0.
+Use the serial console to enter the commands; VGA is an output device until a
+keyboard controller is added.

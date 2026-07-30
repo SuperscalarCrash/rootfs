@@ -14,6 +14,7 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
 - `iproute2`、`ethtool`、OpenSSL 和 CA 证书；
 - 面向 Chiplab NAND 的只读检查工具以及 UBI/UBIFS 管理工具；
 - 可在板上直接运行的 GCC 16.1.0、Binutils 2.46.1、C 头文件和链接库；
+- 可现场编译的 Hello World 与 `/dev/fb0` VGA 色条示例源码；
 - initramfs、tar.zst、UBIFS 和 UBI 四种输出格式。
 
 ## GCC 16 用户态工具链
@@ -117,23 +118,24 @@ C++ 编写，交叉构建原生编译器时需要它。
 gcc --version
 gcc -dumpmachine
 
-cat > hello.c <<'EOF'
-#include <stdio.h>
-
-int main(void)
-{
-    puts("Hello from Gemmont GCC 16!");
-    return 0;
-}
-EOF
-
-gcc -O0 -Wall -Wextra -Werror hello.c -o hello
-./hello
+gcc -O0 -Wall -Wextra -Werror \
+  /usr/share/gemmont-examples/hello.c -o /tmp/hello
+/tmp/hello
 ```
 
 预期 `gcc -dumpmachine` 输出 `loongarch32-linux-gnusf`，程序输出
-`Hello from Gemmont GCC 16!`。仓库的 `make board-smoke-test` 会通过
-SSH 在板上自动完成同一项编译、执行和 ELF ABI 检查。
+`Hello from Gemmont GCC 16 on LA32R!`。连接 VGA 显示器并启动带
+Xilinx framebuffer 驱动的新内核后，还可以在串口中现场编译色条程序：
+
+```sh
+gcc -O2 -Wall -Wextra -Werror \
+  /usr/share/gemmont-examples/vga-colorbars.c -o /tmp/vga-colorbars
+/tmp/vga-colorbars
+```
+
+程序通过 `/dev/fb0` 绘制 640×480 色条；命令输入仍走串口。仓库的
+`make board-smoke-test` 会通过 SSH 自动完成 Hello World 的编译、
+执行和 ELF ABI 检查，并检查 framebuffer 后运行色条程序。
 
 将 SSH 公钥写入镜像：
 
@@ -144,7 +146,7 @@ SSH_AUTHORIZED_KEYS_FILE="$HOME/.ssh/id_ed25519.pub" make
 若已有同版本 Linux 发布包，可把其中的已签名模块一并装入 rootfs：
 
 ```sh
-LINUX_RELEASE_ARCHIVE=../linux-7.1.4-SuperscalarCrash-la32r-v0.1.1-loongarch32.tar.zst \
+LINUX_RELEASE_ARCHIVE=../linux-7.1.4-SuperscalarCrash-la32r-v0.1.6-loongarch32.tar.zst \
 SSH_AUTHORIZED_KEYS_FILE="$HOME/.ssh/id_ed25519.pub" make
 ```
 
@@ -153,7 +155,7 @@ SSH_AUTHORIZED_KEYS_FILE="$HOME/.ssh/id_ed25519.pub" make
 
 ```sh
 CPU_HZ=72000000 \
-KERNEL_LOCALVERSION=-SuperscalarCrash-la32r-v0.1.1 \
+KERNEL_LOCALVERSION=-SuperscalarCrash-la32r-v0.1.6 \
 make kernel
 ```
 

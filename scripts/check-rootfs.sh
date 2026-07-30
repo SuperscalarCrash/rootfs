@@ -30,6 +30,9 @@ required_target_files="
 /usr/sbin/ubiattach
 /usr/sbin/ubiformat
 /usr/sbin/gemmont-rootfs-selftest
+/usr/share/gemmont-examples/hello.c
+/usr/share/gemmont-examples/vga-colorbars.c
+/usr/share/gemmont-examples/README
 ${native_prefix}/bin/gcc
 ${native_prefix}/bin/as
 ${native_prefix}/bin/ld
@@ -180,6 +183,9 @@ for archive_entry in \
 	root/.config/fastfetch/config.jsonc \
 	usr/bin/fastfetch \
 	usr/share/fastfetch/logos/zju-qiushi-eagle.txt \
+	usr/share/gemmont-examples/hello.c \
+	usr/share/gemmont-examples/vga-colorbars.c \
+	usr/share/gemmont-examples/README \
 	usr/sbin/sshd \
 	opt/gemmont-gcc-16.1.0/bin/gcc; do
 	if ! gzip -dc "${images_dir}/rootfs.cpio.gz" |
