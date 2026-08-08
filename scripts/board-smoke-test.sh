@@ -243,6 +243,58 @@ gcc -O2 -Wall -Wextra -Werror \
 "${gcc_smoke_dir}/vga-colorbars"
 echo "VGA_FRAMEBUFFER_OK"
 
+check_framebuffer_ppm()
+{
+	ppm_file=$1
+	IFS=' ' read -r ppm_magic ppm_width ppm_height ppm_maxval <"${ppm_file}"
+	case "${ppm_magic}:${ppm_width}:${ppm_height}:${ppm_maxval}" in
+		P6:[1-9]*:[1-9]*:255)
+			;;
+		*)
+			echo "invalid framebuffer PPM header: ${ppm_magic} ${ppm_width} ${ppm_height} ${ppm_maxval}" >&2
+			exit 1
+			;;
+	esac
+	ppm_payload_size=$((ppm_width * ppm_height * 3))
+	ppm_file_size=$(wc -c <"${ppm_file}")
+	if [ "${ppm_file_size}" -le "${ppm_payload_size}" ] ||
+	   [ "${ppm_file_size}" -gt $((ppm_payload_size + 64)) ]; then
+		echo "unexpected framebuffer PPM size: ${ppm_file_size}" >&2
+		exit 1
+	fi
+}
+
+printf '%s' \
+	'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAGUlEQVQoz2N8oODAQApgIkn1qIZRDUNKAwAGbAFgwFERgAAAAABJRU5ErkJggg==' |
+	base64 -d >"${gcc_smoke_dir}/fbv-test.png"
+
+for fb_number in 0 1; do
+	if [ ! -c "/dev/fb${fb_number}" ]; then
+		echo "/dev/fb${fb_number} is missing" >&2
+		exit 1
+	fi
+	fb-test -f "${fb_number}" >"${gcc_smoke_dir}/fb-test-${fb_number}.log"
+	grep -q '^fb-test 1\.1\.1 (rosetta)$' \
+		"${gcc_smoke_dir}/fb-test-${fb_number}.log"
+	fbdump -fb "/dev/fb${fb_number}" >
+		"${gcc_smoke_dir}/fb${fb_number}-before-fbv.ppm"
+	check_framebuffer_ppm \
+		"${gcc_smoke_dir}/fb${fb_number}-before-fbv.ppm"
+	FRAMEBUFFER="/dev/fb${fb_number}" \
+		fbv -c -i -u -y "${gcc_smoke_dir}/fbv-test.png" \
+		>"${gcc_smoke_dir}/fbv-${fb_number}.log" 2>&1
+	fbdump -fb "/dev/fb${fb_number}" >
+		"${gcc_smoke_dir}/fb${fb_number}-after-fbv.ppm"
+	check_framebuffer_ppm \
+		"${gcc_smoke_dir}/fb${fb_number}-after-fbv.ppm"
+	if cmp -s "${gcc_smoke_dir}/fb${fb_number}-before-fbv.ppm" \
+		"${gcc_smoke_dir}/fb${fb_number}-after-fbv.ppm"; then
+		echo "fbv did not change /dev/fb${fb_number}" >&2
+		exit 1
+	fi
+done
+echo "FRAMEBUFFER_TOOLS_OK"
+
 gcc -O2 -Wall -Wextra -Werror \
 	/usr/share/gemmont-examples/lcd-colorbars.c \
 	-o "${gcc_smoke_dir}/lcd-colorbars"

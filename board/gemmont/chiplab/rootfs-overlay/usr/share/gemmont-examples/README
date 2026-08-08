@@ -25,6 +25,16 @@ Compile and draw NT35510 LCD color bars:
     /usr/share/gemmont-examples/lcd-colorbars.c -o /root/lcd-colorbars
   /root/lcd-colorbars
 
+Exercise, capture, and display images on a framebuffer:
+
+  fb-test -f 0
+  fbdump -fb /dev/fb0 > /root/fb0.ppm
+  FRAMEBUFFER=/dev/fb0 fbv -y /root/image.png
+
+fbv supports PNG, JPEG, and BMP images. fb-test-perf writes benchmark results
+to a file, for example "fb-test-perf 0 /root/fb-perf.log". fb-test-rect keeps
+drawing random rectangles until it is interrupted.
+
 The examples find the framebuffer names "Xilinx" and "chiplab-lcd", so they do
 not depend on whether Linux registers VGA or LCD as /dev/fb0. Pass an explicit
 /dev/fbN path to override discovery. With the matching bitstream and Linux,

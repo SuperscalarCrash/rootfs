@@ -25,6 +25,15 @@ required_target_files="
 /root/.config/fastfetch/config.jsonc
 /usr/bin/evtest
 /usr/bin/fastfetch
+/usr/bin/fb-test
+/usr/bin/fb-test-offset
+/usr/bin/fb-test-perf
+/usr/bin/fb-test-rect
+/usr/bin/fb-test-string
+/usr/bin/fbdump
+/usr/bin/fbv
+/usr/lib/libjpeg.so.10
+/usr/lib/libpng16.so.16
 /bin/grep
 /usr/bin/htop
 /usr/bin/rz
@@ -220,6 +229,13 @@ for candidate in \
 	/usr/bin/adbd \
 	/usr/bin/evtest \
 	/usr/bin/fastfetch \
+	/usr/bin/fb-test \
+	/usr/bin/fb-test-offset \
+	/usr/bin/fb-test-perf \
+	/usr/bin/fb-test-rect \
+	/usr/bin/fb-test-string \
+	/usr/bin/fbdump \
+	/usr/bin/fbv \
 	/bin/grep \
 	/usr/bin/htop \
 	/usr/bin/rz \
@@ -246,6 +262,14 @@ for candidate in \
 	if ! "${readelf_bin}" -l "${target_dir}${candidate}" 2>/dev/null |
 		grep -q '/lib32/ld-linux-loongarch-ilp32s.so.1'; then
 		echo "Unexpected dynamic loader in ${candidate}" >&2
+		exit 1
+	fi
+done
+
+for fbv_library in libjpeg.so.10 libpng16.so.16; do
+	if ! "${readelf_bin}" -d "${target_dir}/usr/bin/fbv" |
+		grep -Fq "Shared library: [${fbv_library}]"; then
+		echo "fbv was not linked with ${fbv_library}" >&2
 		exit 1
 	fi
 done
@@ -321,6 +345,15 @@ for archive_entry in \
 	usr/bin/dhrystone \
 	usr/bin/adb \
 	usr/bin/adbd \
+	usr/bin/fb-test \
+	usr/bin/fb-test-offset \
+	usr/bin/fb-test-perf \
+	usr/bin/fb-test-rect \
+	usr/bin/fb-test-string \
+	usr/bin/fbdump \
+	usr/bin/fbv \
+	usr/lib/libjpeg.so.10 \
+	usr/lib/libpng16.so.16 \
 	root/.bash_profile \
 	root/.bashrc \
 	root/.config/fastfetch/config.jsonc \

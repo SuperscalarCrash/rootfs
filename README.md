@@ -10,6 +10,8 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
 - BusyBox init、常用命令，以及作为串口和 SSH 登录 shell 的 Bash
   5.2.37；
 - 面向串口展示的 Fastfetch 2.66.0；
+- `fb-test` 测试套件、`fbdump` framebuffer 截图工具和支持
+  PNG/JPEG/BMP 的 `fbv` 图片查看器；
 - OpenSSH 客户端、服务端、SFTP 和密钥工具；
 - CoreMark 1.01 和 Dhrystone 2.1 CPU 基准测试；
 - GNU grep、tree、htop 3.5.1、tmux 3.6b 和带语法运行库的 Vim 9.1；
@@ -188,7 +190,17 @@ gcc -O2 -Wall -Wextra -Werror \
 程序根据 `Xilinx` framebuffer 名称自动定位 VGA 并绘制 640×480
 色条；命令输入仍走串口。仓库的
 `make board-smoke-test` 会通过 SSH 自动完成 Hello World 的编译、
-执行和 ELF ABI 检查，并检查 framebuffer 后运行色条程序。
+执行和 ELF ABI 检查，并检查 framebuffer 后运行色条程序。镜像还提供
+`fb-test` 套件、`fbdump` 和支持 PNG/JPEG/BMP 的 `fbv`：
+
+```sh
+fb-test -f 0
+fbdump -fb /dev/fb0 > /root/fb0.ppm
+FRAMEBUFFER=/dev/fb0 fbv -y /root/image.png
+```
+
+`fb-test-perf 0 /root/fb-perf.log` 可用于吞吐测试；`fb-test-rect` 会持续
+绘制随机矩形直到被中断，因此它们不属于默认的自动化冒烟测试。
 
 连接 NT35510 LCD 并使用带 Chiplab LCD framebuffer 驱动的内核与
 bitstream 后，可在板上现场编译 LCD 示例：
@@ -274,11 +286,20 @@ secret。CI 使用 Node 24 版本的官方 checkout、cache 和 artifact actions
 推送任意符合 `v*`（以 `v` 开头且后面非空）的 tag 时，
 `.github/workflows/release.yml` 会：
 
-1. 从源码构建并验证 GCC 16.1.0/Binutils 2.46.1 交叉及原生工具链；
-2. 按源码和脚本哈希分别缓存两套 LA32R 工具链，后续 tag 可直接复用；
+1. 恢复并验证 GCC 16.1.0/Binutils 2.46.1 交叉及原生工具链；
+2. 缓存缺失时从源码构建两套 LA32R 工具链；
 3. 用该工具链构建并检查全部 rootfs 镜像；
 4. 上传 90 天保留的 Actions artifact，并创建或更新同名 GitHub
    Release。
+
+`.github/workflows/toolchain-cache.yml` 在工具链相关文件被推送到默认
+分支 `master` 后构建或验证工具链，并把缓存写入默认分支作用域。不同的
+version tag 都可以恢复该缓存。首次使用时，应先等待 `Warm LA32R GCC
+toolchain cache` workflow 成功，再创建并推送 version tag；也可以在
+Actions 页面选择该 workflow，使用 `Run workflow` 在 `master` 上手动
+预热。若修改 `LINUX_REF`、`LINUX_CACHE_KEY` 或工具链构建脚本，必须先
+同步更新两个 workflow 中的对应值、推送到 `master` 并等待新缓存生成，
+然后再打 tag。
 
 Release 同时提供各格式镜像、构建配置、工具链清单、校验和，以及
 `gemmont-rootfs-<tag>-loongarch32.tar.zst` 汇总归档。GCC 缓存只用于

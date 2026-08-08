@@ -1,0 +1,110 @@
+name: Warm LA32R GCC toolchain cache
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/toolchain-cache.yml"
+      - ".gitmodules"
+      - "patches/glibc/**"
+      - "scripts/build-gcc16-native-toolchain.sh"
+      - "scripts/build-gcc16-toolchain.sh"
+      - "scripts/checkout-ci-submodules.sh"
+  workflow_dispatch:
+
+concurrency:
+  group: rootfs-toolchain-cache-master
+  cancel-in-progress: false
+
+env:
+  GCC16_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchains/gcc-16.1.0-la32r
+  GCC16_NATIVE_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchains/gcc-16.1.0-la32r-native
+  LINUX_SOURCE_DIR: ${{ github.workspace }}/linux
+  LINUX_REPOSITORY: SuperscalarCrash/linux
+  LINUX_REF: 2b65c94df2ece64863b28b41d79bedff06c8cd7e
+  LINUX_CACHE_KEY: 2b65c94
+  GLIBC_GIT_URL: git://sourceware.org/git/glibc.git
+
+jobs:
+  toolchain:
+    name: Warm GCC 16.1.0 LA32R cross and native toolchains
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out rootfs sources
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Check out pinned public submodules
+        run: ./scripts/checkout-ci-submodules.sh
+
+      - name: Validate Linux repository credentials
+        shell: bash
+        env:
+          LINUX_REPO_TOKEN: ${{ secrets.LINUX_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${LINUX_REPO_TOKEN}" ]]; then
+            echo "LINUX_REPO_TOKEN is not configured" >&2
+            echo "Add a fine-grained PAT with read-only Contents access to SuperscalarCrash/linux." >&2
+            exit 1
+          fi
+
+      - name: Check out project Linux sources
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.LINUX_REPOSITORY }}
+          ref: ${{ env.LINUX_REF }}
+          path: linux
+          token: ${{ secrets.LINUX_REPO_TOKEN }}
+          persist-credentials: false
+
+      - name: Install toolchain build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bison build-essential bzip2 ca-certificates curl file flex gawk \
+            texinfo xz-utils zlib1g-dev
+
+      - name: Restore GCC 16 toolchain cache
+        id: gcc_cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .toolchains/gcc-16.1.0-la32r
+          key: gcc-16.1.0-la32r-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
+
+      - name: Build or verify GCC 16.1.0
+        env:
+          JOBS: "2"
+        run: ./scripts/build-gcc16-toolchain.sh
+
+      - name: Save GCC 16 toolchain cache
+        if: steps.gcc_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .toolchains/gcc-16.1.0-la32r
+          key: gcc-16.1.0-la32r-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
+
+      - name: Restore native GCC 16 toolchain cache
+        id: native_gcc_cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .toolchains/gcc-16.1.0-la32r-native
+          key: gcc-16.1.0-la32r-native-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
+
+      - name: Build or verify native GCC 16.1.0
+        env:
+          JOBS: "2"
+        run: ./scripts/build-gcc16-native-toolchain.sh
+
+      - name: Save native GCC 16 toolchain cache
+        if: steps.native_gcc_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .toolchains/gcc-16.1.0-la32r-native
+          key: gcc-16.1.0-la32r-native-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
