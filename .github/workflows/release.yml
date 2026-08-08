@@ -5,9 +5,6 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-
 concurrency:
   group: rootfs-release-${{ github.ref }}
   cancel-in-progress: false
@@ -16,25 +13,45 @@ env:
   GCC16_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchains/gcc-16.1.0-la32r
   GCC16_NATIVE_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchains/gcc-16.1.0-la32r-native
   LINUX_SOURCE_DIR: ${{ github.workspace }}/linux
+  LINUX_REPOSITORY: SuperscalarCrash/linux
+  LINUX_REF: 2b65c94df2ece64863b28b41d79bedff06c8cd7e
+  LINUX_CACHE_KEY: 2b65c94
 
 jobs:
   toolchain:
     name: Build GCC 16.1.0 LA32R cross and native toolchains
     runs-on: ubuntu-24.04
     timeout-minutes: 360
+    permissions:
+      contents: read
 
     steps:
       - name: Check out rootfs sources
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          persist-credentials: false
+
+      - name: Validate Linux repository credentials
+        shell: bash
+        env:
+          LINUX_REPO_TOKEN: ${{ secrets.LINUX_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${LINUX_REPO_TOKEN}" ]]; then
+            echo "LINUX_REPO_TOKEN is not configured" >&2
+            echo "Add a fine-grained PAT with read-only Contents access to SuperscalarCrash/linux." >&2
+            exit 1
+          fi
 
       - name: Check out project Linux sources
         uses: actions/checkout@v4
         with:
-          repository: SuperscalarCrash/linux
-          ref: 2b65c94df2ece64863b28b41d79bedff06c8cd7e
+          repository: ${{ env.LINUX_REPOSITORY }}
+          ref: ${{ env.LINUX_REF }}
           path: linux
+          token: ${{ secrets.LINUX_REPO_TOKEN }}
+          persist-credentials: false
 
       - name: Install toolchain build dependencies
         run: |
@@ -48,7 +65,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .toolchains/gcc-16.1.0-la32r
-          key: gcc-16.1.0-la32r-linux-2b65c94-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
+          key: gcc-16.1.0-la32r-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
 
       - name: Build or verify GCC 16.1.0
         env:
@@ -60,7 +77,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .toolchains/gcc-16.1.0-la32r-native
-          key: gcc-16.1.0-la32r-native-linux-2b65c94-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
+          key: gcc-16.1.0-la32r-native-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
 
       - name: Build or verify native GCC 16.1.0
         env:
@@ -72,33 +89,50 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .toolchains/gcc-16.1.0-la32r
-          key: gcc-16.1.0-la32r-linux-2b65c94-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
+          key: gcc-16.1.0-la32r-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
 
       - name: Save native GCC 16 toolchain cache
         if: steps.native_gcc_cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .toolchains/gcc-16.1.0-la32r-native
-          key: gcc-16.1.0-la32r-native-linux-2b65c94-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
+          key: gcc-16.1.0-la32r-native-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
 
   rootfs:
     name: Build LA32R rootfs
     needs: toolchain
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+    permissions:
+      contents: write
 
     steps:
       - name: Check out rootfs sources
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          persist-credentials: false
+
+      - name: Validate Linux repository credentials
+        shell: bash
+        env:
+          LINUX_REPO_TOKEN: ${{ secrets.LINUX_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${LINUX_REPO_TOKEN}" ]]; then
+            echo "LINUX_REPO_TOKEN is not configured" >&2
+            echo "Add a fine-grained PAT with read-only Contents access to SuperscalarCrash/linux." >&2
+            exit 1
+          fi
 
       - name: Check out project Linux sources
         uses: actions/checkout@v4
         with:
-          repository: SuperscalarCrash/linux
-          ref: 2b65c94df2ece64863b28b41d79bedff06c8cd7e
+          repository: ${{ env.LINUX_REPOSITORY }}
+          ref: ${{ env.LINUX_REF }}
           path: linux
+          token: ${{ secrets.LINUX_REPO_TOKEN }}
+          persist-credentials: false
 
       - name: Validate release tag
         shell: bash
@@ -119,14 +153,14 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .toolchains/gcc-16.1.0-la32r
-          key: gcc-16.1.0-la32r-linux-2b65c94-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
+          key: gcc-16.1.0-la32r-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
           fail-on-cache-miss: true
 
       - name: Restore native GCC 16 toolchain cache
         uses: actions/cache/restore@v4
         with:
           path: .toolchains/gcc-16.1.0-la32r-native
-          key: gcc-16.1.0-la32r-native-linux-2b65c94-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
+          key: gcc-16.1.0-la32r-native-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
           fail-on-cache-miss: true
 
       - name: Restore Buildroot download cache

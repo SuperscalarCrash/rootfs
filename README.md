@@ -261,6 +261,13 @@ Chiplab NAND 驱动设置了 `NAND_NO_SUBPAGE_WRITE`，因此 UBI subpage
 
 ## GitHub Release
 
+CI 会从同一组织下的私有仓库 `SuperscalarCrash/linux` 检出固定提交。
+运行 workflow 前，必须在本仓库的 Actions secrets 中配置
+`LINUX_REPO_TOKEN`：使用 resource owner 为 `SuperscalarCrash` 的
+fine-grained PAT，只选择 `linux` 仓库，并且只授予 `Contents: Read-only`。
+CI 不会把该凭据持久化到 runner 的 Git 配置；PAT 到期后需要更新同名
+secret。
+
 推送任意符合 `v*`（以 `v` 开头且后面非空）的 tag 时，
 `.github/workflows/release.yml` 会：
 
