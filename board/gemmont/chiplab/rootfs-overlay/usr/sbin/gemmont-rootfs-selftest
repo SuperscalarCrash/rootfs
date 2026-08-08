@@ -69,6 +69,13 @@ for path in ${required_executables}; do
 	fi
 done
 
+for nameserver in 223.5.5.5 8.8.8.8; do
+	if ! grep -qx "nameserver ${nameserver}" /etc/resolv.conf; then
+		echo "rootfs self-test: missing static DNS server ${nameserver}" >&2
+		exit 1
+	fi
+done
+
 if [ "$(awk -F: '$1 == "root" { print $7 }' /etc/passwd)" != /bin/bash ]; then
 	echo "rootfs self-test: root login shell is not Bash" >&2
 	exit 1

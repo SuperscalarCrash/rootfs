@@ -16,6 +16,7 @@ required_target_files="
 /lib32/ld-linux-loongarch-ilp32s.so.1
 /lib32/sf/libc.so.6
 /etc/inittab
+/etc/resolv.conf
 /usr/bin/coremark
 /usr/bin/dhrystone
 /usr/bin/adb
@@ -110,6 +111,13 @@ if [ "$(grep -Ec '^tty1::respawn:/sbin/getty -L tty1 0 linux # GEMMONT_FRAMEBUFF
 	echo "Expected exactly one framebuffer tty1 getty in /etc/inittab" >&2
 	exit 1
 fi
+
+for nameserver in 223.5.5.5 8.8.8.8; do
+	if ! grep -qx "nameserver ${nameserver}" "${target_dir}/etc/resolv.conf"; then
+		echo "Missing static DNS server in root filesystem: ${nameserver}" >&2
+		exit 1
+	fi
+done
 
 for link_mapping in gcc:gcc cc:gcc as:as ld:ld; do
 	link=${link_mapping%%:*}
@@ -338,6 +346,7 @@ fi
 for archive_entry in \
 	bin/bash \
 	etc/inittab \
+	etc/resolv.conf \
 	lib/ld-linux-loongarch-ilp32s.so.1 \
 	lib/libc.so.6 \
 	lib32 \
