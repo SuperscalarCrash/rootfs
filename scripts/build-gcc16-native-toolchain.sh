@@ -26,8 +26,10 @@ build_dir=${NATIVE_TOOLCHAIN_BUILD_DIR:-"${root_dir}/.build/gcc-${gcc_version}-l
 jobs=${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf '1')}
 
 gcc_archive="gcc-${gcc_version}.tar.xz"
+gcc_url="https://ftp.gnu.org/gnu/gcc/gcc-${gcc_version}/${gcc_archive}"
 gcc_sha256=50efb4d94c3397aff3b0d61a5abd748b4dd31d9d3f2ab7be05b171d36a510f79
 binutils_archive="binutils-${binutils_version}.tar.xz"
+binutils_url="https://ftp.gnu.org/gnu/binutils/${binutils_archive}"
 binutils_sha256=e127a709cba24c76de8936cb7083dd768f28cd37eb010492e2f19b71eb1294e4
 zlib_archive="zlib-${zlib_version}.tar.gz"
 zlib_url="https://github.com/madler/zlib/releases/download/v${zlib_version}/${zlib_archive}"
@@ -168,10 +170,9 @@ if [ "${cross_libstdcxx}" = libstdc++.a ] ||
 fi
 
 mkdir -p "${download_dir}" "${build_dir}"
-printf '%s  %s\n' "${gcc_sha256}" "${download_dir}/${gcc_archive}" |
-	sha256sum -c -
-printf '%s  %s\n' "${binutils_sha256}" \
-	"${download_dir}/${binutils_archive}" | sha256sum -c -
+download "${gcc_url}" "${download_dir}/${gcc_archive}" "${gcc_sha256}"
+download "${binutils_url}" "${download_dir}/${binutils_archive}" \
+	"${binutils_sha256}"
 download "${zlib_url}" "${download_dir}/${zlib_archive}" "${zlib_sha256}"
 
 source_dir="${build_dir}/src"
