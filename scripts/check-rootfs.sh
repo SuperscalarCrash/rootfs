@@ -13,12 +13,23 @@ required_target_files="
 /init
 /bin/bash
 /bin/busybox
+/lib32/ld-linux-loongarch-ilp32s.so.1
+/lib32/sf/libc.so.6
 /etc/inittab
+/usr/bin/adb
+/usr/bin/adbd
 /root/.bash_profile
 /root/.bashrc
 /root/.config/fastfetch/config.jsonc
 /usr/bin/evtest
 /usr/bin/fastfetch
+/bin/grep
+/usr/bin/htop
+/usr/bin/rz
+/usr/bin/sz
+/usr/bin/tmux
+/usr/bin/tree
+/usr/bin/vim
 /usr/share/fastfetch/logos/zju-qiushi-eagle.txt
 /usr/bin/gcc
 /usr/bin/cc
@@ -27,6 +38,17 @@ required_target_files="
 /usr/bin/ssh
 /usr/bin/ssh-keygen
 /usr/sbin/sshd
+/usr/sbin/nginx
+/usr/bin/ntpdate
+/usr/sbin/ntpd
+/sbin/dhclient
+/sbin/dhclient-script
+/bin/ping
+/usr/sbin/arping
+/usr/bin/clockdiff
+/usr/bin/tracepath
+/usr/bin/python3
+/usr/lib/libffi.so.8
 /usr/sbin/mtdinfo
 /usr/sbin/nanddump
 /usr/sbin/ubiattach
@@ -47,6 +69,9 @@ ${native_prefix}/sysroot/usr/lib32/sf/crti.o
 ${native_prefix}/sysroot/usr/lib32/sf/crtn.o
 /usr/share/gemmont-toolchain/native-toolchain.manifest
 /usr/share/licenses/gemmont-native-toolchain/gcc-COPYING3
+/usr/share/licenses/gemmont-native-toolchain/glibc-COPYING.LIB
+/usr/share/licenses/gemmont-native-toolchain/linux-COPYING
+/usr/share/licenses/gemmont-native-toolchain/linux-syscall-note
 "
 
 for path in ${required_target_files}; do
@@ -93,14 +118,60 @@ for image in rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi; do
 done
 
 readelf_bin="${toolchain_dir}/bin/${native_target}-readelf"
+objdump_bin="${toolchain_dir}/bin/${native_target}-objdump"
 gcc_bin="${toolchain_dir}/bin/${native_target}-gcc"
-if [ ! -x "${readelf_bin}" ] || [ ! -x "${gcc_bin}" ]; then
+if [ ! -x "${readelf_bin}" ] || [ ! -x "${objdump_bin}" ] ||
+   [ ! -x "${gcc_bin}" ]; then
 	echo "GCC 16 LA32R cross-toolchain was not found at ${toolchain_dir}" >&2
 	exit 1
 fi
 
 if [ "$("${gcc_bin}" -dumpfullversion)" != "16.1.0" ]; then
 	echo "Root filesystem was not built with GCC 16.1.0" >&2
+	exit 1
+fi
+
+if ! strings "${target_dir}/lib32/sf/libc.so.6" |
+	grep -q 'GNU C Library (GNU libc) stable release version 2.44'; then
+	echo "Target runtime is not upstream glibc 2.44" >&2
+	exit 1
+fi
+if strings "${target_dir}/lib32/sf/libc.so.6" |
+	grep -q 'LoongArch GNU toolchain LA32 v2.0'; then
+	echo "Loongson Education glibc was found in target runtime" >&2
+	exit 1
+fi
+for runtime in "${target_dir}/lib/ld-linux-loongarch-ilp32s.so.1" \
+	"${target_dir}/lib/libc.so.6"; do
+	if "${objdump_bin}" -d "${runtime}" |
+		grep -Eq '[[:space:]]rotri\.[dw][[:space:]]'; then
+		echo "Unsupported rotate instruction found in LA32R runtime: ${runtime}" >&2
+		exit 1
+	fi
+done
+if ! grep -qx '#define LINUX_VERSION_CODE 459012' \
+	"${target_dir}${native_prefix}/sysroot/usr/include/linux/version.h"; then
+	echo "Native development sysroot does not use Linux 7.1.4 UAPI" >&2
+	exit 1
+fi
+if ! grep -qx 'toolchain_revision=5' \
+	"${target_dir}/usr/share/gemmont-toolchain/native-toolchain.manifest" ||
+   ! grep -qx 'glibc_version=2.44' \
+	"${target_dir}/usr/share/gemmont-toolchain/native-toolchain.manifest" ||
+   ! grep -qx 'provenance=upstream-with-la32-fix' \
+	"${target_dir}/usr/share/gemmont-toolchain/native-toolchain.manifest"; then
+	echo "Native toolchain provenance metadata is incomplete" >&2
+	exit 1
+fi
+if [ -e "${target_dir}${native_prefix}/sysroot/usr/lib32/sf/libc.a" ] ||
+   [ -e "${target_dir}${native_prefix}/sysroot/usr/lib32/sf/libm.a" ] ||
+   [ -e "${target_dir}${native_prefix}/lib/gcc/${native_target}/16.1.0/plugin" ]; then
+	echo "Native toolchain contains oversized static or plugin development files" >&2
+	exit 1
+fi
+if find "${target_dir}" \( -name 'libc-2.28.so' -o \
+	-name 'libstdc++.so.6.0.25' \) -print -quit | grep -q .; then
+	echo "Legacy Loongson Education runtime was found in rootfs" >&2
 	exit 1
 fi
 
@@ -141,10 +212,28 @@ fi
 for candidate in \
 	/bin/bash \
 	/bin/busybox \
+	/usr/bin/adb \
+	/usr/bin/adbd \
 	/usr/bin/evtest \
 	/usr/bin/fastfetch \
+	/bin/grep \
+	/usr/bin/htop \
+	/usr/bin/rz \
+	/usr/bin/sz \
+	/usr/bin/tmux \
+	/usr/bin/tree \
+	/usr/bin/vim \
 	/usr/bin/ssh \
-	/usr/sbin/sshd; do
+	/usr/sbin/sshd \
+	/usr/sbin/nginx \
+	/usr/bin/ntpdate \
+	/usr/sbin/ntpd \
+	/sbin/dhclient \
+	/bin/ping \
+	/usr/sbin/arping \
+	/usr/bin/clockdiff \
+	/usr/bin/tracepath \
+	/usr/bin/python3; do
 	if ! "${readelf_bin}" -h "${target_dir}${candidate}" 2>/dev/null |
 		grep -Eq 'Flags:.*0x41([,[:space:]]|$)'; then
 		echo "${candidate} was not compiled as LA32R OBJ-v1" >&2
@@ -156,6 +245,31 @@ for candidate in \
 		exit 1
 	fi
 done
+
+libffi="${target_dir}/usr/lib/libffi.so.8"
+if ! "${readelf_bin}" -h "${libffi}" 2>/dev/null |
+	grep -Eq 'Flags:.*0x41([,[:space:]]|$)'; then
+	echo "libffi was not compiled as LA32R OBJ-v1" >&2
+	exit 1
+fi
+if "${readelf_bin}" -l "${libffi}" 2>/dev/null | grep -q 'INTERP'; then
+	echo "libffi shared library unexpectedly contains a program interpreter" >&2
+	exit 1
+fi
+libffi_closure_disassembly=$("${objdump_bin}" -d \
+	--disassemble=ffi_prep_closure_loc "${libffi}")
+if ! printf '%s\n' "${libffi_closure_disassembly}" |
+	grep -Eq '[[:space:]]lu12i\.w[[:space:]].*165892' ||
+   ! printf '%s\n' "${libffi_closure_disassembly}" |
+	grep -Eq '[[:space:]]ori[[:space:]].*0x18d'; then
+	echo "libffi does not generate the LA32 ld.w closure trampoline" >&2
+	exit 1
+fi
+if printf '%s\n' "${libffi_closure_disassembly}" |
+	grep -Eq '[[:space:]]lu12i\.w[[:space:]].*166916'; then
+	echo "libffi still generates the LA64 ld.d closure trampoline" >&2
+	exit 1
+fi
 
 for candidate in \
 	"${native_prefix}/bin/gcc" \
@@ -181,7 +295,7 @@ printf '%s\n' \
 "${gcc_bin}" \
 	--sysroot="${target_dir}${native_prefix}/sysroot" \
 	-march=la32rv1.0 -mabi=ilp32s \
-	-x c "${sanity_source}" -o "${sanity_binary}"
+	-x c "${sanity_source}" -pthread -lm -o "${sanity_binary}"
 if ! "${readelf_bin}" -h "${sanity_binary}" |
 	grep -Eq 'Flags:.*0x41([,[:space:]]|$)'; then
 	echo "Packaged native development sysroot produced the wrong ELF ABI" >&2
@@ -196,17 +310,43 @@ fi
 for archive_entry in \
 	bin/bash \
 	etc/inittab \
+	lib/ld-linux-loongarch-ilp32s.so.1 \
+	lib/libc.so.6 \
+	lib32 \
+	usr/bin/adb \
+	usr/bin/adbd \
 	root/.bash_profile \
 	root/.bashrc \
 	root/.config/fastfetch/config.jsonc \
 	usr/bin/evtest \
 	usr/bin/fastfetch \
+	bin/grep \
+	usr/bin/htop \
+	usr/bin/rz \
+	usr/bin/sz \
+	usr/bin/tmux \
+	usr/bin/tree \
+	usr/bin/vim \
 	usr/share/fastfetch/logos/zju-qiushi-eagle.txt \
 	usr/share/gemmont-examples/hello.c \
 	usr/share/gemmont-examples/vga-colorbars.c \
 	usr/share/gemmont-examples/lcd-colorbars.c \
 	usr/share/gemmont-examples/README \
+	usr/share/licenses/gemmont-native-toolchain/glibc-COPYING.LIB \
+	usr/share/licenses/gemmont-native-toolchain/linux-COPYING \
+	usr/share/licenses/gemmont-native-toolchain/linux-syscall-note \
 	usr/sbin/sshd \
+	usr/sbin/nginx \
+	usr/bin/ntpdate \
+	usr/sbin/ntpd \
+	sbin/dhclient \
+	sbin/dhclient-script \
+	bin/ping \
+	usr/sbin/arping \
+	usr/bin/clockdiff \
+	usr/bin/tracepath \
+	usr/bin/python3 \
+	usr/lib/libffi.so.8 \
 	opt/gemmont-gcc-16.1.0/bin/gcc; do
 	if ! gzip -dc "${images_dir}/rootfs.cpio.gz" |
 		cpio -it --quiet 2>/dev/null |

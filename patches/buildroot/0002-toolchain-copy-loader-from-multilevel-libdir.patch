@@ -1,0 +1,19 @@
+diff --git a/toolchain/helpers.mk b/toolchain/helpers.mk
+index 21c710d0fb..b4d1b3d905 100644
+--- a/toolchain/helpers.mk
++++ b/toolchain/helpers.mk
+@@ -145,7 +145,13 @@ copy_toolchain_sysroot = \
+ 		done ; \
+ 	fi ; \
+ 	if [[ ! $$(find $(STAGING_DIR)/lib -name 'ld*.so.*' -print -quit) ]]; then \
+-		find $${ARCH_SYSROOT_DIR}/lib -name 'ld*.so.*' -print0 | xargs -0 -I % cp % $(STAGING_DIR)/lib/; \
++		for loader_dir in \
++			$${ARCH_SYSROOT_DIR}/lib \
++			$${ARCH_SYSROOT_DIR}/$$(dirname $${ARCH_LIB_DIR}); do \
++			if [ -d "$${loader_dir}" ]; then \
++				find "$${loader_dir}" -maxdepth 1 -name 'ld*.so.*' -print0; \
++			fi; \
++		done | xargs -0 -r -I % cp % $(STAGING_DIR)/lib/; \
+ 	fi ; \
+ 	if [ `readlink -f $${SYSROOT_DIR}` != `readlink -f $${ARCH_SYSROOT_DIR}` ] ; then \
+ 		if [ ! -d $${ARCH_SYSROOT_DIR}/usr/include ] ; then \

@@ -25,7 +25,7 @@ if [ ! -s "${initramfs}" ]; then
 fi
 
 if ! command -v "${cross_compile}gcc" >/dev/null 2>&1; then
-	default_toolchain="${HOME}/.local/toolchains/gcc-16.1.0-loongarch/bin"
+	default_toolchain="${root_dir}/.toolchains/gcc-16.1.0-la32r/bin"
 	if [ -x "${default_toolchain}/${cross_compile}gcc" ]; then
 		PATH="${default_toolchain}:${PATH}"
 		export PATH

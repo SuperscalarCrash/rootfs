@@ -1,0 +1,44 @@
+diff --git a/package/libffi/0001-loongarch-fix-32-bit-closure-trampoline.patch b/package/libffi/0001-loongarch-fix-32-bit-closure-trampoline.patch
+new file mode 100644
+index 0000000000..49fb9975c0
+--- /dev/null
++++ b/package/libffi/0001-loongarch-fix-32-bit-closure-trampoline.patch
+@@ -0,0 +1,38 @@
++From: SuperscalarCrash <noreply@superscalarcrash.org>
++Date: Sat, 8 Aug 2026 08:00:00 +0000
++Subject: [PATCH] loongarch: fix 32-bit dynamic closure trampoline
++
++The LoongArch dynamic closure trampoline always emits ld.d and stores a
++64-bit function pointer. Calling a closure therefore raises SIGILL on a
++32-bit LoongArch processor.
++
++Keep the existing LA64 encoding unchanged, but emit ld.w and a 32-bit
++function pointer when pointers are 32 bits. The final word remains padding
++so the closure layout and FFI_TRAMPOLINE_SIZE do not change.
++
++Upstream: Not submitted
++Signed-off-by: SuperscalarCrash <noreply@superscalarcrash.org>
++---
++diff --git a/src/loongarch/ffi.c b/src/loongarch/ffi.c
++index dcd318c..49fb997 100644
++--- a/src/loongarch/ffi.c
+++++ b/src/loongarch/ffi.c
++@@ -524 +524 @@ ffi_prep_closure_loc (ffi_closure *closure, ffi_cif *cif,
++-  uint64_t fn = (uint64_t) (uintptr_t) ffi_closure_asm;
+++  uintptr_t fn = (uintptr_t) ffi_closure_asm;
++@@ -540 +540,5 @@ ffi_prep_closure_loc (ffi_closure *closure, ffi_cif *cif,
++-  tramp[1] = 0x28c0418d; /* ld.d   $t1, $t0, 16 */
+++#if __SIZEOF_POINTER__ == 8
+++  tramp[1] = 0x28c0418d; /* ld.d   $t1, $t0, 16 */
+++#else
+++  tramp[1] = 0x2880418d; /* ld.w   $t1, $t0, 16 */
+++#endif
++@@ -543,2 +547,6 @@ ffi_prep_closure_loc (ffi_closure *closure, ffi_cif *cif,
++-  tramp[4] = fn;
++-  tramp[5] = fn >> 32;
+++  tramp[4] = (uint32_t) fn;
+++#if __SIZEOF_POINTER__ == 8
+++  tramp[5] = (uint32_t) (fn >> 32);
+++#else
+++  tramp[5] = 0;
+++#endif

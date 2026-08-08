@@ -1,0 +1,35 @@
+diff --git a/package/python3/0010-gh-139275-Fix-compilation-of-Modules-_remote_debuggi.patch b/package/python3/0010-gh-139275-Fix-compilation-of-Modules-_remote_debuggi.patch
+index b000a68e9b..8f23941edc 100644
+--- a/package/python3/0010-gh-139275-Fix-compilation-of-Modules-_remote_debuggi.patch
++++ b/package/python3/0010-gh-139275-Fix-compilation-of-Modules-_remote_debuggi.patch
+@@ -29,9 +29,9 @@ diff --git a/Modules/_remote_debugging_module.c b/Modules/_remote_debugging_modu
+ index b46538b76df..e86a27d5812 100644
+ --- a/Modules/_remote_debugging_module.c
+ +++ b/Modules/_remote_debugging_module.c
+-@@ -834,7 +834,7 @@ _Py_RemoteDebug_GetAsyncioDebugAddress(proc_handle_t* handle)
+-         PyErr_SetString(PyExc_RuntimeError, "Failed to find the AsyncioDebug section in the process.");
+-         _PyErr_ChainExceptions1(exc);
++@@ -1329,7 +1329,7 @@ _Py_RemoteDebug_GetAsyncioDebugAddress(proc_handle_t* handle)
++             _PyErr_ChainExceptions1(exc);
++         }
+      }
+ -#elif defined(__linux__)
+ +#elif defined(__linux__) && HAVE_PROCESS_VM_READV
+@@ -42,9 +42,9 @@ diff --git a/Python/remote_debug.h b/Python/remote_debug.h
+ index 8f9b6cd4c49..b7d17a0f345 100644
+ --- a/Python/remote_debug.h
+ +++ b/Python/remote_debug.h
+-@@ -923,7 +923,7 @@
+-             handle->pid);
+-         _PyErr_ChainExceptions1(exc);
++@@ -1174,7 +1174,7 @@ _Py_RemoteDebug_GetPyRuntimeAddress(proc_handle_t* handle)
++             _PyErr_ChainExceptions1(exc);
++         }
+      }
+ -#elif defined(__linux__)
+ +#elif defined(__linux__) && HAVE_PROCESS_VM_READV
+@@ -53,4 +53,3 @@ index 8f9b6cd4c49..b7d17a0f345 100644
+                                             _Py_RemoteDebug_ValidatePyRuntimeCookie);
+ -- 
+ 2.47.3
+-

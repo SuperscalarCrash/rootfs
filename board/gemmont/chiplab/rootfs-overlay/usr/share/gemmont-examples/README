@@ -1,23 +1,29 @@
 Gemmont on-board GCC examples
 =============================
 
+Keep compiler temporaries in the root home directory instead of the small
+/tmp filesystem:
+
+  mkdir -p /root/.gcc-tmp
+  export TMPDIR=/root/.gcc-tmp
+
 Compile and run Hello World:
 
   gcc -O0 -Wall -Wextra -Werror \
-    /usr/share/gemmont-examples/hello.c -o /tmp/hello
-  /tmp/hello
+    /usr/share/gemmont-examples/hello.c -o /root/hello
+  /root/hello
 
 Compile and draw VGA color bars:
 
   gcc -O2 -Wall -Wextra -Werror \
-    /usr/share/gemmont-examples/vga-colorbars.c -o /tmp/vga-colorbars
-  /tmp/vga-colorbars
+    /usr/share/gemmont-examples/vga-colorbars.c -o /root/vga-colorbars
+  /root/vga-colorbars
 
 Compile and draw NT35510 LCD color bars:
 
   gcc -O2 -Wall -Wextra -Werror \
-    /usr/share/gemmont-examples/lcd-colorbars.c -o /tmp/lcd-colorbars
-  /tmp/lcd-colorbars
+    /usr/share/gemmont-examples/lcd-colorbars.c -o /root/lcd-colorbars
+  /root/lcd-colorbars
 
 The examples find the framebuffer names "Xilinx" and "chiplab-lcd", so they do
 not depend on whether Linux registers VGA or LCD as /dev/fb0. Pass an explicit

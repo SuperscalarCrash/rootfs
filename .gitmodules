@@ -1,3 +1,6 @@
 [submodule "buildroot"]
 	path = buildroot
 	url = https://gitlab.com/buildroot.org/buildroot.git
+[submodule "glibc"]
+	path = glibc
+	url = https://sourceware.org/git/glibc.git

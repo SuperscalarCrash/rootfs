@@ -1,0 +1,25 @@
+diff --git a/package/libffi/libffi.hash b/package/libffi/libffi.hash
+index 6ea2c5cd61..030491f9ec 100644
+--- a/package/libffi/libffi.hash
++++ b/package/libffi/libffi.hash
+@@ -1,4 +1,4 @@
+-# Locally calculated
+-sha256  bc9842a18898bfacb0ed1252c4febcc7e78fa139fd27fdc7a3e30d9d9356119b  libffi-3.4.8.tar.gz
++# From the GitHub release asset digest
++sha256  d5e9a6638ddbd2513ddb54518eb67e4bbe6fa707bcc01c10f6212f0a088d819d  libffi-3.7.1.tar.gz
+ # License files, locally calculated
+-sha256  67894089811f93fca47a76f85e017da6f8582d4ba0905963c6e0f1ad6df7a195  LICENSE
++sha256  17b64dc60f3b6897a60f971e288b973f655c2edcdf08b25f3c3dd5549857881c  LICENSE
+diff --git a/package/libffi/libffi.mk b/package/libffi/libffi.mk
+index dc2e9db530..4064dc948d 100644
+--- a/package/libffi/libffi.mk
++++ b/package/libffi/libffi.mk
+@@ -4,7 +4,7 @@
+ #
+ ################################################################################
+ 
+-LIBFFI_VERSION = 3.4.8
++LIBFFI_VERSION = 3.7.1
+ LIBFFI_SITE = \
+ 	https://github.com/libffi/libffi/releases/download/v$(LIBFFI_VERSION)
+ LIBFFI_LICENSE = MIT

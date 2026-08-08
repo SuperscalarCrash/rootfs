@@ -11,6 +11,13 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
   5.2.37；
 - 面向串口展示的 Fastfetch 2.66.0；
 - OpenSSH 客户端、服务端、SFTP 和密钥工具；
+- GNU grep、tree、htop 3.5.1、tmux 3.6b 和带语法运行库的 Vim 9.1；
+- lrzsz 的 `rz`/`sz`，以及 Android Debug Bridge 的 `adb` 客户端和
+  `adbd` 守护程序；
+- nginx 1.30.4（HTTP、HTTPS 和 HTTP/2）、NTP/ntpdate、ISC dhclient
+  以及 iputils；
+- Python 3.14.7，包含 SSL、readline、bz2、xz 和 zlib 支持；其
+  `ctypes` 使用上游 libffi 3.7.1 的 `LOONGARCH32`/`FFI_ILP32S` 端口；
 - `iproute2`、`ethtool`、OpenSSL 和 CA 证书；
 - `evtest`，用于检查 PS/2 键盘等 Linux input 设备的事件；
 - 面向 Chiplab NAND 的只读检查工具以及 UBI/UBIFS 管理工具；
@@ -34,14 +41,18 @@ LA32R、ILP32S、soft-float、OBJ-v1 程序，并不是 LA32 或 LA64 程序。
 这里不需要修改 GCC 的 LA32R 后端；GCC 16 已有上游支持。仓库脚本负责
 补齐目标 libc/sysroot、构建次序、安装布局和 ABI 校验。
 
-上游 glibc 尚没有可直接替换的完整 LA32R 用户态 port。因此工具链只从
-Loongson Education 的旧工具链中提取并校验 glibc 2.28 sysroot（libc、
-动态加载器和 Linux UAPI 头文件）；GCC、汇编器、链接器、libgcc 以及
-BusyBox/OpenSSH 等 rootfs 软件均由 GCC 16.1.0/新 Binutils 构建。旧
-GCC 8 可执行文件不会进入新工具链，也不会参与 rootfs 编译。
-工具链给 GCC 16 补充旧 glibc 头文件所需的
-`__loongarch32r`/`_ABILP32` 兼容预处理宏；这些宏不改变指令集，也不会
-给 Gemmont 增加非 LA32R 指令。
+glibc 2.44 已在上游提供 LA32R/ILP32S port。本仓库以固定到
+`glibc-2.44` 标签的 submodule 保存其源码，并使用相邻项目的
+`../linux` 内核树安装 Linux UAPI 头文件。这个内核树当前为 7.1.4，
+包含 Gemmont LA32R/Chiplab 所需的项目补丁；工具链不会下载另一份
+Linux 源码。构建时在临时源码副本中应用
+`patches/glibc/0001-loongarch-fix-pointer-mangling-for-la32.patch`，修正
+2.44 中错误使用 LA64 `rotri.d` 的汇编指针混淆代码，并按 LA32R 手册
+用移位与 OR 实现精简指令集中不存在的 rotate；submodule 本身仍严格
+固定在原始发行标签且保持干净。glibc、动态加载器、libgcc、
+libstdc++ 和 libatomic 均由
+上游源码重新构建，不再提取或链接 Loongson Education 的 glibc 2.28、
+Linux 5.14 UAPI 或 GCC 8 运行库。
 
 上游 Buildroot 目前只提供 LA64 目标。本仓库固定 Buildroot 2026.05.1，
 并在临时 worktree 中应用
@@ -66,8 +77,22 @@ bitstream 与 Linux，显示器会出现登录提示，键盘可直接输入。�
 ```sh
 fastfetch
 bash --version
+htop --version
+tmux -V
+vim --version
+adb version
+nginx -v
+ntpdate -q ntp.example.org
+dhclient --version
+ping -c 3 172.25.2.193
+python3 --version
 evtest
 ```
+
+tmux 所需的 `C.UTF-8` locale 会随 rootfs 一并生成。`adb` 用于从板子
+连接其他 ADB 目标；`adbd` 用于让主机连接板子。启用 `adbd` 只提供用户态
+守护程序，USB ADB 还要求内核 USB gadget、UDC 和 FunctionFS 已正确配置；
+没有这些板级条件时不自动启动 `adbd`，SSH 仍是默认远程管理通道。
 
 `evtest` 会列出已注册的 input 设备，也可指定设备，例如
 `evtest /dev/input/event0`。设备编号不固定，应按输出中的键盘名称选择；
@@ -87,6 +112,10 @@ git、curl、cpio、rsync、bc、file、tar、zstd 和 ncurses 开发包。GCC
 git submodule update --init
 make
 ```
+
+`linux` 项目必须与本仓库并列放置为 `../linux`，且默认要求版本为
+7.1.4；也可用 `LINUX_SOURCE_DIR=/绝对路径/linux` 显式指定。构建只会从
+该树执行 `headers_install`，不会另行下载 Linux 源码。
 
 默认路径：
 
@@ -115,10 +144,17 @@ make native-toolchain  # 交叉构建板上运行的 GCC；会先确保前者存
 make toolchain         # 等价于 make native-toolchain
 ```
 
-脚本会校验 GCC、Binutils、zlib 和 sysroot 下载文件的 SHA-256。已有且
+脚本会校验 GCC、Binutils 和 zlib 下载文件的 SHA-256，并验证 glibc
+submodule 与本地 Linux 源码版本。已有且
 通过版本、目标三元组、ELF ABI 和链接测试的工具链会直接复用。原生
 GCC 只启用 C 前端；主机交叉 GCC 同时启用 C 和 C++，因为 GCC 本身由
 C++ 编写，交叉构建原生编译器时需要它。
+
+板载 UBI 分区固定为 108 MiB。为在保留原生 GCC 的同时容纳完整 rootfs，
+原生开发 sysroot 只保留动态 C 链接所需的头文件、CRT、链接脚本和兼容
+归档，不打包静态 `libc.a`/`libm.a`、locale 源数据或 GCC 插件开发头。
+板上 `gcc` 支持普通动态 C 程序（包括 `-pthread` 和 `-lm`），不提供
+`gcc -static` 的完整 glibc 静态链接环境；主机交叉工具链仍保留完整 sysroot。
 
 ## 板上现场编译
 
@@ -128,9 +164,12 @@ C++ 编写，交叉构建原生编译器时需要它。
 gcc --version
 gcc -dumpmachine
 
+mkdir -p /root/.gcc-tmp
+export TMPDIR=/root/.gcc-tmp
+
 gcc -O0 -Wall -Wextra -Werror \
-  /usr/share/gemmont-examples/hello.c -o /tmp/hello
-/tmp/hello
+  /usr/share/gemmont-examples/hello.c -o /root/hello
+/root/hello
 ```
 
 预期 `gcc -dumpmachine` 输出 `loongarch32-linux-gnusf`，程序输出
@@ -139,8 +178,8 @@ Xilinx framebuffer 驱动的新内核后，还可以在串口中现场编译色�
 
 ```sh
 gcc -O2 -Wall -Wextra -Werror \
-  /usr/share/gemmont-examples/vga-colorbars.c -o /tmp/vga-colorbars
-/tmp/vga-colorbars
+  /usr/share/gemmont-examples/vga-colorbars.c -o /root/vga-colorbars
+/root/vga-colorbars
 ```
 
 程序根据 `Xilinx` framebuffer 名称自动定位 VGA 并绘制 640×480
@@ -153,8 +192,8 @@ bitstream 后，可在板上现场编译 LCD 示例：
 
 ```sh
 gcc -O2 -Wall -Wextra -Werror \
-  /usr/share/gemmont-examples/lcd-colorbars.c -o /tmp/lcd-colorbars
-/tmp/lcd-colorbars
+  /usr/share/gemmont-examples/lcd-colorbars.c -o /root/lcd-colorbars
+/root/lcd-colorbars
 ```
 
 该程序根据 framebuffer 的 `chiplab-lcd` 名称自动定位 LCD，不依赖它

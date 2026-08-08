@@ -1,0 +1,24 @@
+diff --git a/package/python3/python3.hash b/package/python3/python3.hash
+index 53df4f5587..f68703041e 100644
+--- a/package/python3/python3.hash
++++ b/package/python3/python3.hash
+@@ -1,4 +1,4 @@
+-# From https://www.python.org/downloads/release/python-3146/
+-sha256  143b1dddefaec3bd2e21e3b839b34a2b7fb9842272883c576420d605e9f30c63  Python-3.14.6.tar.xz
++# From https://www.python.org/downloads/release/python-3147/
++sha256  3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81  Python-3.14.7.tar.xz
+ # Locally computed
+ sha256  b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231  LICENSE
+diff --git a/package/python3/python3.mk b/package/python3/python3.mk
+index f5ac3e8bb3..a9982b22f5 100644
+--- a/package/python3/python3.mk
++++ b/package/python3/python3.mk
+@@ -5,7 +5,7 @@
+ ################################################################################
+ 
+ PYTHON3_VERSION_MAJOR = 3.14
+-PYTHON3_VERSION = $(PYTHON3_VERSION_MAJOR).6
++PYTHON3_VERSION = $(PYTHON3_VERSION_MAJOR).7
+ PYTHON3_SOURCE = Python-$(PYTHON3_VERSION).tar.xz
+ PYTHON3_SITE = https://python.org/ftp/python/$(PYTHON3_VERSION)
+ PYTHON3_LICENSE = Python-2.0, others

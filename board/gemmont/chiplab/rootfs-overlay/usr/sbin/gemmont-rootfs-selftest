@@ -5,20 +5,42 @@ required_files="
 /root/.bash_profile
 /root/.bashrc
 /root/.config/fastfetch/config.jsonc
+/usr/lib/libffi.so.8
 /usr/share/fastfetch/logos/zju-qiushi-eagle.txt
 "
 
 required_executables="
 /bin/busybox
 /bin/bash
+/lib32/ld-linux-loongarch-ilp32s.so.1
+/lib32/sf/libc.so.6
+/usr/bin/adb
+/usr/bin/adbd
 /usr/bin/evtest
 /usr/bin/fastfetch
+/bin/grep
+/usr/bin/htop
+/usr/bin/rz
+/usr/bin/sz
+/usr/bin/tmux
+/usr/bin/tree
+/usr/bin/vim
 /usr/bin/gcc
 /usr/bin/as
 /usr/bin/ld
 /usr/bin/ssh
 /usr/bin/ssh-keygen
 /usr/sbin/sshd
+/usr/sbin/nginx
+/usr/bin/ntpdate
+/usr/sbin/ntpd
+/sbin/dhclient
+/sbin/dhclient-script
+/bin/ping
+/usr/sbin/arping
+/usr/bin/clockdiff
+/usr/bin/tracepath
+/usr/bin/python3
 /usr/sbin/mtdinfo
 /usr/sbin/ubiattach
 /usr/sbin/ubiformat
@@ -70,6 +92,15 @@ case "$(fastfetch --version)" in
 		;;
 	*)
 		echo "rootfs self-test: unexpected Fastfetch version" >&2
+		exit 1
+		;;
+esac
+
+case "$(/lib32/sf/libc.so.6 | sed -n '1p')" in
+	'GNU C Library (GNU libc) stable release version 2.44.'*)
+		;;
+	*)
+		echo "rootfs self-test: unexpected glibc version" >&2
 		exit 1
 		;;
 esac

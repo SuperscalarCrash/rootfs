@@ -1,0 +1,98 @@
+From 83c7e67bccce335199f400c86858535ab0472ca5 Mon Sep 17 00:00:00 2001
+From: SuperscalarCrash <noreply@superscalarcrash.dev>
+Date: Fri, 7 Aug 2026 22:00:00 +0000
+Subject: [PATCH] LoongArch: Fix pointer mangling for LA32
+
+The assembly pointer guard implementation unconditionally uses the LA64
+rotri.d instruction and 64-bit rotation counts.  The obvious rotri.w
+replacement is not part of the reduced LA32R ISA either, so both forms make
+every LA32R process that reaches setjmp terminate with SIGILL.
+
+Use shifts and ORs to implement the 2 * sizeof (uintptr_t) + 1 rotation from
+the generic C implementation.  Pass an explicit temporary register through
+the assembly macros so the pointer guard remains available when setjmp saves
+both the return address and stack pointer.
+---
+ sysdeps/loongarch/__longjmp.S                         |  4 ++--
+ sysdeps/loongarch/setjmp.S                           |  4 ++--
+ .../unix/sysv/linux/loongarch/pointer_guard-asm.h    | 26 ++++++++++++++++++--
+ 3 files changed, 22 insertions(+), 6 deletions(-)
+
+diff --git a/sysdeps/loongarch/__longjmp.S b/sysdeps/loongarch/__longjmp.S
+--- a/sysdeps/loongarch/__longjmp.S
++++ b/sysdeps/loongarch/__longjmp.S
+@@ -23,9 +23,9 @@
+ ENTRY (__longjmp)
+ #ifdef PTR_MANGLE
+ 	REG_L t0, a0, 0*SZREG
+-	PTR_DEMANGLE (ra, t0, t1)
++	PTR_DEMANGLE (ra, t0, t1, t2)
+ 	REG_L t0, a0, 1*SZREG
+-	PTR_DEMANGLE2 (sp, t0, t1)
++	PTR_DEMANGLE2 (sp, t0, t1, t2)
+ #else
+ 	REG_L ra, a0, 0*SZREG
+ 	REG_L sp, a0, 1*SZREG
+diff --git a/sysdeps/loongarch/setjmp.S b/sysdeps/loongarch/setjmp.S
+--- a/sysdeps/loongarch/setjmp.S
++++ b/sysdeps/loongarch/setjmp.S
+@@ -31,9 +31,9 @@ END (setjmp)
+ 
+ ENTRY (__sigsetjmp)
+ #ifdef PTR_MANGLE
+-	PTR_MANGLE (t0, ra, t1)
++	PTR_MANGLE (t0, ra, t1, t2)
+ 	REG_S t0, a0, 0*SZREG
+-	PTR_MANGLE2 (t0, sp, t1)
++	PTR_MANGLE2 (t0, sp, t1, t2)
+ 	REG_S t0, a0, 1*SZREG
+ #else
+ 	REG_S ra, a0, 0*SZREG
+diff --git a/sysdeps/unix/sysv/linux/loongarch/pointer_guard-asm.h b/sysdeps/unix/sysv/linux/loongarch/pointer_guard-asm.h
+--- a/sysdeps/unix/sysv/linux/loongarch/pointer_guard-asm.h
++++ b/sysdeps/unix/sysv/linux/loongarch/pointer_guard-asm.h
+@@ -28,20 +28,36 @@
+ # else
+ #  define PTR_MANGLE_LOAD(guard) \
+   LOAD_GLOBAL (guard, __pointer_chk_guard);
+ # endif
+-# define PTR_MANGLE(dst, src, guard) \
++# define PTR_MANGLE(dst, src, guard, tmp) \
+   PTR_MANGLE_LOAD (guard); \
+-  PTR_MANGLE2 (dst, src, guard);
+-# define PTR_DEMANGLE(dst, src, guard) \
++  PTR_MANGLE2 (dst, src, guard, tmp);
++# define PTR_DEMANGLE(dst, src, guard, tmp) \
+   PTR_MANGLE_LOAD (guard); \
+-  PTR_DEMANGLE2 (dst, src, guard);
++  PTR_DEMANGLE2 (dst, src, guard, tmp);
+ /* Use PTR_MANGLE2 for efficiency if guard is already loaded.  */
+-# define PTR_MANGLE2(dst, src, guard) \
++# if __loongarch_grlen == 64
++# define PTR_MANGLE2(dst, src, guard, tmp) \
+   xor  dst, src, guard; \
+   rotri.d  dst, dst, 47;
+-# define PTR_DEMANGLE2(dst, src, guard) \
++# define PTR_DEMANGLE2(dst, src, guard, tmp) \
+   rotri.d  dst, src, 17; \
+   xor  dst, dst, guard;
++# else
++/* LA32R has no rotate instruction.  Keep this in sync with the generic C
++   implementation: rotate left by 2 * sizeof (uintptr_t) + 1 when mangling,
++   and right by the same amount when demangling.  */
++# define PTR_MANGLE2(dst, src, guard, tmp) \
++  xor  dst, src, guard; \
++  slli.w  tmp, dst, 9; \
++  srli.w  dst, dst, 23; \
++  or  dst, dst, tmp;
++# define PTR_DEMANGLE2(dst, src, guard, tmp) \
++  srli.w  tmp, src, 9; \
++  slli.w  dst, src, 23; \
++  or  dst, dst, tmp; \
++  xor  dst, dst, guard;
++# endif
+ #endif
+ 
+ #endif /* POINTER_GUARD_ASM_H */
+-- 
+2.51.0

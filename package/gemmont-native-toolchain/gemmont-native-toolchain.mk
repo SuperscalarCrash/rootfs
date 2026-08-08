@@ -4,17 +4,22 @@
 #
 ################################################################################
 
-GEMMONT_NATIVE_TOOLCHAIN_VERSION = 16.1.0-r1
+GEMMONT_NATIVE_TOOLCHAIN_VERSION = 16.1.0-r5
 GEMMONT_NATIVE_TOOLCHAIN_SITE = $(BR2_EXTERNAL_GEMMONT_ROOTFS_PATH)/.toolchains/gcc-16.1.0-la32r-native
 GEMMONT_NATIVE_TOOLCHAIN_SITE_METHOD = local
 GEMMONT_NATIVE_TOOLCHAIN_LICENSE = \
 	GPL-3.0+, \
 	GPL-3.0-with-GCC-exception, \
+	LGPL-2.1+, \
+	GPL-2.0 with Linux-syscall-note, \
 	Zlib
 GEMMONT_NATIVE_TOOLCHAIN_LICENSE_FILES = \
 	licenses/gcc-COPYING3 \
 	licenses/gcc-COPYING.RUNTIME \
 	licenses/binutils-COPYING3 \
+	licenses/glibc-COPYING.LIB \
+	licenses/linux-COPYING \
+	licenses/linux-syscall-note \
 	licenses/zlib-LICENSE
 
 GEMMONT_NATIVE_TOOLCHAIN_PREFIX = /opt/gemmont-gcc-16.1.0
