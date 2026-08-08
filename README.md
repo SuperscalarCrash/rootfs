@@ -11,6 +11,7 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
   5.2.37；
 - 面向串口展示的 Fastfetch 2.66.0；
 - OpenSSH 客户端、服务端、SFTP 和密钥工具；
+- CoreMark 1.01 和 Dhrystone 2.1 CPU 基准测试；
 - GNU grep、tree、htop 3.5.1、tmux 3.6b 和带语法运行库的 Vim 9.1；
 - lrzsz 的 `rz`/`sz`，以及 Android Debug Bridge 的 `adb` 客户端和
   `adbd` 守护程序；
@@ -77,6 +78,8 @@ bitstream 与 Linux，显示器会出现登录提示，键盘可直接输入。�
 ```sh
 fastfetch
 bash --version
+coremark
+dhrystone 1000000
 htop --version
 tmux -V
 vim --version

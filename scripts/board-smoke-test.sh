@@ -93,6 +93,26 @@ printf 'alpha\nbeta\n' | grep -qx beta
 tree --version | sed -n '1p'
 echo "GREP_TREE_OK"
 
+coremark >"${gcc_smoke_dir}/coremark.log"
+cat "${gcc_smoke_dir}/coremark.log"
+grep -q 'Correct operation validated' "${gcc_smoke_dir}/coremark.log"
+grep -Eq '^CoreMark 1\.0[[:space:]]*:' "${gcc_smoke_dir}/coremark.log"
+
+dhrystone 1000000 >"${gcc_smoke_dir}/dhrystone.log"
+cat "${gcc_smoke_dir}/dhrystone.log"
+grep -q 'Dhrystone Benchmark, Version 2.1' \
+	"${gcc_smoke_dir}/dhrystone.log"
+grep -q 'Final values of the variables used in the benchmark:' \
+	"${gcc_smoke_dir}/dhrystone.log"
+grep -Eq '^Int_Glob:[[:space:]]+5$' "${gcc_smoke_dir}/dhrystone.log"
+grep -Eq '^Bool_Glob:[[:space:]]+1$' "${gcc_smoke_dir}/dhrystone.log"
+grep -Eq '^Arr_1_Glob\[8\]:[[:space:]]+7$' \
+	"${gcc_smoke_dir}/dhrystone.log"
+grep -Eq '^Arr_2_Glob\[8\]\[7\]:[[:space:]]+1000010$' \
+	"${gcc_smoke_dir}/dhrystone.log"
+grep -q 'Dhrystones per Second:' "${gcc_smoke_dir}/dhrystone.log"
+echo "CPU_BENCHMARKS_OK"
+
 case "$(htop --version | sed -n '1p')" in
 	'htop 3.5.1'*)
 		;;

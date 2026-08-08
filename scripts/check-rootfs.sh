@@ -16,6 +16,8 @@ required_target_files="
 /lib32/ld-linux-loongarch-ilp32s.so.1
 /lib32/sf/libc.so.6
 /etc/inittab
+/usr/bin/coremark
+/usr/bin/dhrystone
 /usr/bin/adb
 /usr/bin/adbd
 /root/.bash_profile
@@ -212,6 +214,8 @@ fi
 for candidate in \
 	/bin/bash \
 	/bin/busybox \
+	/usr/bin/coremark \
+	/usr/bin/dhrystone \
 	/usr/bin/adb \
 	/usr/bin/adbd \
 	/usr/bin/evtest \
@@ -313,6 +317,8 @@ for archive_entry in \
 	lib/ld-linux-loongarch-ilp32s.so.1 \
 	lib/libc.so.6 \
 	lib32 \
+	usr/bin/coremark \
+	usr/bin/dhrystone \
 	usr/bin/adb \
 	usr/bin/adbd \
 	root/.bash_profile \

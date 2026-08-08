@@ -14,6 +14,8 @@ required_executables="
 /bin/bash
 /lib32/ld-linux-loongarch-ilp32s.so.1
 /lib32/sf/libc.so.6
+/usr/bin/coremark
+/usr/bin/dhrystone
 /usr/bin/adb
 /usr/bin/adbd
 /usr/bin/evtest
