@@ -266,7 +266,10 @@ CI 会从同一组织下的私有仓库 `SuperscalarCrash/linux` 检出固定提
 `LINUX_REPO_TOKEN`：使用 resource owner 为 `SuperscalarCrash` 的
 fine-grained PAT，只选择 `linux` 仓库，并且只授予 `Contents: Read-only`。
 CI 不会把该凭据持久化到 runner 的 Git 配置；PAT 到期后需要更新同名
-secret。
+secret。CI 使用 Node 24 版本的官方 checkout、cache 和 artifact actions；
+为避开 Sourceware 对共享 GitHub runner 地址的 HTTPS 限流，glibc 子模块
+在 CI 中通过 Sourceware 的只读 Git 服务获取，并在构建前核对固定 gitlink
+提交。本地和 `.gitmodules` 仍使用官方 HTTPS 地址。
 
 推送任意符合 `v*`（以 `v` 开头且后面非空）的 tag 时，
 `.github/workflows/release.yml` 会：

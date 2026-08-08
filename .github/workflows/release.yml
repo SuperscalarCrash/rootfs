@@ -16,6 +16,7 @@ env:
   LINUX_REPOSITORY: SuperscalarCrash/linux
   LINUX_REF: 2b65c94df2ece64863b28b41d79bedff06c8cd7e
   LINUX_CACHE_KEY: 2b65c94
+  GLIBC_GIT_URL: git://sourceware.org/git/glibc.git
 
 jobs:
   toolchain:
@@ -27,10 +28,12 @@ jobs:
 
     steps:
       - name: Check out rootfs sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
           persist-credentials: false
+
+      - name: Check out pinned public submodules
+        run: ./scripts/checkout-ci-submodules.sh
 
       - name: Validate Linux repository credentials
         shell: bash
@@ -45,7 +48,7 @@ jobs:
           fi
 
       - name: Check out project Linux sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ env.LINUX_REPOSITORY }}
           ref: ${{ env.LINUX_REF }}
@@ -62,7 +65,7 @@ jobs:
 
       - name: Restore GCC 16 toolchain cache
         id: gcc_cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: .toolchains/gcc-16.1.0-la32r
           key: gcc-16.1.0-la32r-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
@@ -74,7 +77,7 @@ jobs:
 
       - name: Restore native GCC 16 toolchain cache
         id: native_gcc_cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: .toolchains/gcc-16.1.0-la32r-native
           key: gcc-16.1.0-la32r-native-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
@@ -86,14 +89,14 @@ jobs:
 
       - name: Save GCC 16 toolchain cache
         if: steps.gcc_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: .toolchains/gcc-16.1.0-la32r
           key: gcc-16.1.0-la32r-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
 
       - name: Save native GCC 16 toolchain cache
         if: steps.native_gcc_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: .toolchains/gcc-16.1.0-la32r-native
           key: gcc-16.1.0-la32r-native-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
@@ -108,10 +111,12 @@ jobs:
 
     steps:
       - name: Check out rootfs sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
           persist-credentials: false
+
+      - name: Check out pinned public submodules
+        run: ./scripts/checkout-ci-submodules.sh
 
       - name: Validate Linux repository credentials
         shell: bash
@@ -126,7 +131,7 @@ jobs:
           fi
 
       - name: Check out project Linux sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ env.LINUX_REPOSITORY }}
           ref: ${{ env.LINUX_REF }}
@@ -150,21 +155,21 @@ jobs:
             libncurses-dev patch perl python3 rsync unzip wget xz-utils zstd
 
       - name: Restore GCC 16 toolchain cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: .toolchains/gcc-16.1.0-la32r
           key: gcc-16.1.0-la32r-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-toolchain.sh') }}
           fail-on-cache-miss: true
 
       - name: Restore native GCC 16 toolchain cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: .toolchains/gcc-16.1.0-la32r-native
           key: gcc-16.1.0-la32r-native-linux-${{ env.LINUX_CACHE_KEY }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.gitmodules', 'scripts/build-gcc16-native-toolchain.sh', 'scripts/build-gcc16-toolchain.sh') }}
           fail-on-cache-miss: true
 
       - name: Restore Buildroot download cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: dl
           key: buildroot-dl-${{ runner.os }}-${{ hashFiles('.gitmodules', 'configs/**', 'patches/**') }}
@@ -203,7 +208,7 @@ jobs:
           )
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gemmont-rootfs-${{ github.ref_name }}-loongarch32
           path: release/
