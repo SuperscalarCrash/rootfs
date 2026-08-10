@@ -1,0 +1,8 @@
+session.screen0.rootCommand:	xsetroot -solid rgb:18/22/2a
+session.screen0.toolbar.visible:	true
+session.screen0.toolbar.placement:	BottomCenter
+session.screen0.strftimeFormat:	%Y-%m-%d %H:%M
+session.screen0.workspaces:	2
+session.menuFile:	~/.fluxbox/menu
+session.styleFile:	/usr/share/fluxbox/styles/Flux
+session.styleOverlay:	~/.fluxbox/overlay

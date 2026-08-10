@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SuperscalarCrash <noreply@superscalarcrash.org>
+Date: Mon, 10 Aug 2026 18:30:00 +0000
+Subject: [PATCH] package/xf86-video-fbdev: keep module binding lazy
+
+xf86-video-fbdev intentionally loads Xorg's fbdevhw submodule from its
+Probe callback before it calls any fbdevHW symbols.  Full RELRO adds
+-Wl,-z,now to every target link through the Buildroot toolchain wrapper,
+so dlopen tries to resolve those symbols before Probe can load fbdevhw and
+rejects fbdev_drv.so with an undefined-symbol error.
+
+Append -Wl,-z,lazy for this Xorg module when full RELRO is selected.  The
+module retains RELRO, while using the binding model required by its upstream
+submodule-loading design.
+
+Signed-off-by: SuperscalarCrash <noreply@superscalarcrash.org>
+---
+ package/x11r7/xdriver_xf86-video-fbdev/xdriver_xf86-video-fbdev.mk | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/package/x11r7/xdriver_xf86-video-fbdev/xdriver_xf86-video-fbdev.mk b/package/x11r7/xdriver_xf86-video-fbdev/xdriver_xf86-video-fbdev.mk
+index ed91cf2e41..3fd94e22e6 100644
+--- a/package/x11r7/xdriver_xf86-video-fbdev/xdriver_xf86-video-fbdev.mk
++++ b/package/x11r7/xdriver_xf86-video-fbdev/xdriver_xf86-video-fbdev.mk
+@@ -10,5 +10,12 @@ XDRIVER_XF86_VIDEO_FBDEV_SITE = https://xorg.freedesktop.org/releases/individual
+ XDRIVER_XF86_VIDEO_FBDEV_LICENSE = MIT
+ XDRIVER_XF86_VIDEO_FBDEV_LICENSE_FILES = COPYING
+ XDRIVER_XF86_VIDEO_FBDEV_DEPENDENCIES = xserver_xorg-server xorgproto
++
++# The driver resolves fbdevHW symbols only after its Probe callback loads the
++# fbdevhw Xorg submodule.  BIND_NOW would resolve them too early at dlopen().
++ifeq ($(BR2_RELRO_FULL),y)
++XDRIVER_XF86_VIDEO_FBDEV_CONF_ENV += \
++	LDFLAGS="$(TARGET_LDFLAGS) -Wl,-z,lazy"
++endif
+ 
+ $(eval $(autotools-package))
+-- 
+2.47.2

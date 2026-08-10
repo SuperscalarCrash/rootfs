@@ -5,6 +5,14 @@ required_files="
 /root/.bash_profile
 /root/.bashrc
 /root/.config/fastfetch/config.jsonc
+/root/.fluxbox/init
+/root/.fluxbox/menu
+/root/.fluxbox/overlay
+/root/.fluxbox/startup
+/root/.xsession
+/etc/X11/xorg.conf.d/10-gemmont-fbdev.conf
+/etc/default/nodm
+/usr/share/fonts/dejavu/DejaVuSans.ttf
 /usr/lib/libffi.so.8
 /usr/share/fastfetch/logos/zju-qiushi-eagle.txt
 "
@@ -27,7 +35,37 @@ required_executables="
 /usr/bin/fb-test-string
 /usr/bin/fbdump
 /usr/bin/fbv
+/usr/bin/Xorg
+/usr/bin/setxkbmap
+/usr/bin/startx
+/usr/bin/xauth
+/usr/bin/xcalc
+/usr/bin/xclock
+/usr/bin/xdpyinfo
+/usr/bin/xedit
+/usr/bin/xev
+/usr/bin/xeyes
+/usr/bin/xinit
+/usr/bin/xinput
+/usr/bin/xkill
+/usr/bin/xload
+/usr/bin/xlogo
+/usr/bin/xmessage
+/usr/bin/xprop
+/usr/bin/xrandr
+/usr/bin/xrdb
+/usr/bin/xset
+/usr/bin/xsetroot
+/usr/bin/xterm
+/usr/bin/xwininfo
+/usr/bin/xwd
+/usr/bin/xwud
+/usr/bin/startfluxbox
+/usr/bin/fluxbox
+/usr/sbin/nodm
+/etc/init.d/S90nodm
 /bin/grep
+/usr/bin/zstd
 /usr/bin/htop
 /usr/bin/rz
 /usr/bin/sz
@@ -61,6 +99,21 @@ for path in ${required_files}; do
 		exit 1
 	fi
 done
+
+if ! grep -Eq '^[[:space:]]*Option[[:space:]]+"fbdev"[[:space:]]+"/dev/fb0"' \
+	/etc/X11/xorg.conf.d/10-gemmont-fbdev.conf; then
+	echo "rootfs self-test: Xorg is not pinned to VGA /dev/fb0" >&2
+	exit 1
+fi
+
+if ! grep -qx 'NODM_XSESSION=/root/.xsession' /etc/default/nodm; then
+	echo "rootfs self-test: nodm does not start the root Fluxbox session" >&2
+	exit 1
+fi
+if ! grep -qx 'NODM_X_OPTIONS="-nolisten tcp -s 0"' /etc/default/nodm; then
+	echo "rootfs self-test: nodm does not keep Xorg local-only" >&2
+	exit 1
+fi
 
 for path in ${required_executables}; do
 	if [ ! -x "${path}" ]; then

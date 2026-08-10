@@ -1,0 +1,13 @@
+[begin] (Gemmont LA32R)
+  [exec] (Terminal) {xterm}
+  [exec] (Calculator) {xcalc}
+  [exec] (Text editor) {xedit}
+  [exec] (Clock) {xclock}
+  [exec] (Eyes) {xeyes}
+  [exec] (System load) {xload}
+  [separator]
+  [exec] (Display information) {xterm -hold -e xdpyinfo}
+  [exec] (Input events) {xterm -hold -e xev}
+  [restart] (Restart Fluxbox)
+  [exit] (Exit Fluxbox)
+[end]

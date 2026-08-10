@@ -40,11 +40,19 @@ test_peer=$2
 skip_kernel_module_tests=$3
 actual_release=$(uname -r)
 gcc_smoke_dir="/root/.gemmont-rootfs-smoke.$$"
+x11_client_pids=
 mkdir -m 700 "${gcc_smoke_dir}"
 mkdir -m 700 "${gcc_smoke_dir}/tmp" "${gcc_smoke_dir}/tmux"
 export TMPDIR="${gcc_smoke_dir}/tmp"
 export TMUX_TMPDIR="${gcc_smoke_dir}/tmux"
-trap 'rm -rf "${gcc_smoke_dir}"' EXIT HUP INT TERM
+cleanup()
+{
+	for client_pid in ${x11_client_pids}; do
+		kill "${client_pid}" 2>/dev/null || true
+	done
+	rm -rf "${gcc_smoke_dir}"
+}
+trap cleanup EXIT HUP INT TERM
 
 if [ "${actual_release}" != "${expected_release}" ]; then
 	echo "kernel release mismatch: ${actual_release} != ${expected_release}" >&2
@@ -294,6 +302,126 @@ for fb_number in 0 1; do
 	fi
 done
 echo "FRAMEBUFFER_TOOLS_OK"
+
+# NODM starts the root Fluxbox session on display :0.  Xorg may need several
+# minutes to initialize on the 50 MHz FPGA, so wait without treating the slow
+# startup as a failure.
+x11_display=:0
+x11_ready=0
+x11_attempt=0
+while [ "${x11_attempt}" -lt 120 ]; do
+	if DISPLAY="${x11_display}" xdpyinfo \
+		>"${gcc_smoke_dir}/xdpyinfo.log" 2>&1; then
+		x11_ready=1
+		break
+	fi
+	x11_attempt=$((x11_attempt + 1))
+	sleep 5
+done
+if [ "${x11_ready}" -ne 1 ]; then
+	cat "${gcc_smoke_dir}/xdpyinfo.log" >&2
+	echo "Xorg display ${x11_display} did not become ready" >&2
+	exit 1
+fi
+
+# virtual_size includes the stride padding (1024 pixels on the Chiplab VGA
+# framebuffer), while Xorg correctly exposes the visible 640x480 mode.  Prefer
+# the first advertised framebuffer mode and only fall back to virtual_size on
+# drivers which do not publish modes.
+expected_x11_dimensions=$(sed -n \
+	's/^[A-Z]:\([0-9][0-9]*x[0-9][0-9]*\).*/\1/p' \
+	/sys/class/graphics/fb0/modes | sed -n '1p')
+if [ -z "${expected_x11_dimensions}" ]; then
+	expected_x11_dimensions=$(tr ',' 'x' \
+		</sys/class/graphics/fb0/virtual_size)
+fi
+if ! grep -Eq \
+	"dimensions:[[:space:]]+${expected_x11_dimensions}[[:space:]]+pixels" \
+	"${gcc_smoke_dir}/xdpyinfo.log"; then
+	cat "${gcc_smoke_dir}/xdpyinfo.log" >&2
+	echo "Xorg dimensions do not match /dev/fb0" >&2
+	exit 1
+fi
+
+# The Fluxbox process exists before it has finished publishing its EWMH root
+# window properties.  Wait for the window manager itself to become ready, not
+# merely for its process to be forked, before launching clients.
+fluxbox_ready=0
+fluxbox_attempt=0
+while [ "${fluxbox_attempt}" -lt 120 ]; do
+	if pidof fluxbox >/dev/null &&
+	   DISPLAY="${x11_display}" xprop -root _NET_SUPPORTING_WM_CHECK \
+		>"${gcc_smoke_dir}/xprop-wm-ready.log" 2>&1 &&
+	   grep -q '_NET_SUPPORTING_WM_CHECK(WINDOW)' \
+		"${gcc_smoke_dir}/xprop-wm-ready.log"; then
+		fluxbox_ready=1
+		break
+	fi
+	fluxbox_attempt=$((fluxbox_attempt + 1))
+	sleep 5
+done
+if [ "${fluxbox_ready}" -ne 1 ]; then
+	cat "${gcc_smoke_dir}/xprop-wm-ready.log" >&2 2>/dev/null || true
+	echo "Fluxbox is not ready on ${x11_display}" >&2
+	exit 1
+fi
+
+DISPLAY="${x11_display}" xrandr --current \
+	>"${gcc_smoke_dir}/xrandr.log"
+DISPLAY="${x11_display}" xinput --list \
+	>"${gcc_smoke_dir}/xinput.log"
+DISPLAY="${x11_display}" xprop -root \
+	>"${gcc_smoke_dir}/xprop-root.log"
+
+DISPLAY="${x11_display}" xterm -geometry 48x8+16+16 \
+	-title 'Gemmont Xterm smoke' -e /bin/sh -c \
+	"echo XTERM_X11_OK >'${gcc_smoke_dir}/xterm.log'; sleep 120" &
+xterm_pid=$!
+DISPLAY="${x11_display}" xcalc &
+xcalc_pid=$!
+DISPLAY="${x11_display}" xedit "${gcc_smoke_dir}/xedit.txt" &
+xedit_pid=$!
+DISPLAY="${x11_display}" xclock -digital -update 1 &
+xclock_pid=$!
+DISPLAY="${x11_display}" xeyes &
+xeyes_pid=$!
+x11_client_pids="${xterm_pid} ${xcalc_pid} ${xedit_pid} ${xclock_pid} ${xeyes_pid}"
+
+x11_client_attempt=0
+while [ ! -f "${gcc_smoke_dir}/xterm.log" ] &&
+      [ "${x11_client_attempt}" -lt 60 ]; do
+	x11_client_attempt=$((x11_client_attempt + 1))
+	sleep 5
+done
+if [ ! -f "${gcc_smoke_dir}/xterm.log" ] ||
+   [ "$(cat "${gcc_smoke_dir}/xterm.log")" != XTERM_X11_OK ]; then
+	echo "Xterm did not execute its test command" >&2
+	exit 1
+fi
+# Give the other clients time to map their first windows after Xterm proves
+# that the server is responsive.
+sleep 10
+for client_pid in "${xterm_pid}" "${xcalc_pid}" "${xedit_pid}" \
+	"${xclock_pid}" "${xeyes_pid}"; do
+	if ! kill -0 "${client_pid}" 2>/dev/null; then
+		echo "X11 test client ${client_pid} exited unexpectedly" >&2
+		exit 1
+	fi
+done
+
+DISPLAY="${x11_display}" xwininfo -root -tree \
+	>"${gcc_smoke_dir}/xwininfo.log"
+grep -q 'Gemmont Xterm smoke' "${gcc_smoke_dir}/xwininfo.log"
+DISPLAY="${x11_display}" xwd -root -silent \
+	-out "${gcc_smoke_dir}/x11-root.xwd"
+test -s "${gcc_smoke_dir}/x11-root.xwd"
+
+kill "${xterm_pid}" "${xcalc_pid}" "${xedit_pid}" \
+	"${xclock_pid}" "${xeyes_pid}"
+wait "${xterm_pid}" "${xcalc_pid}" "${xedit_pid}" \
+	"${xclock_pid}" "${xeyes_pid}" 2>/dev/null || true
+x11_client_pids=
+echo "XORG_FLUXBOX_APPLICATIONS_OK"
 
 gcc -O2 -Wall -Wextra -Werror \
 	/usr/share/gemmont-examples/lcd-colorbars.c \

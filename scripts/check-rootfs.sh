@@ -33,9 +33,49 @@ required_target_files="
 /usr/bin/fb-test-string
 /usr/bin/fbdump
 /usr/bin/fbv
+/usr/bin/Xorg
+/usr/lib/xorg/modules/drivers/fbdev_drv.so
+/usr/lib/xorg/modules/input/evdev_drv.so
+/usr/bin/setxkbmap
+/usr/bin/startx
+/usr/bin/xauth
+/usr/bin/xcalc
+/usr/bin/xclock
+/usr/bin/xdpyinfo
+/usr/bin/xedit
+/usr/bin/xev
+/usr/bin/xeyes
+/usr/bin/xinit
+/usr/bin/xinput
+/usr/bin/xkill
+/usr/bin/xload
+/usr/bin/xlogo
+/usr/bin/xmessage
+/usr/bin/xprop
+/usr/bin/xrandr
+/usr/bin/xrdb
+/usr/bin/xset
+/usr/bin/xsetroot
+/usr/bin/xterm
+/usr/bin/xwininfo
+/usr/bin/xwd
+/usr/bin/xwud
+/usr/bin/startfluxbox
+/usr/bin/fluxbox
+/usr/sbin/nodm
+/etc/init.d/S90nodm
+/etc/X11/xorg.conf.d/10-gemmont-fbdev.conf
+/etc/default/nodm
+/root/.fluxbox/init
+/root/.fluxbox/menu
+/root/.fluxbox/overlay
+/root/.fluxbox/startup
+/root/.xsession
+/usr/share/fonts/dejavu/DejaVuSans.ttf
 /usr/lib/libjpeg.so.10
 /usr/lib/libpng16.so.16
 /bin/grep
+/usr/bin/zstd
 /usr/bin/htop
 /usr/bin/rz
 /usr/bin/sz
@@ -93,6 +133,29 @@ for path in ${required_target_files}; do
 	fi
 done
 
+if ! grep -Eq '^[[:space:]]*Option[[:space:]]+"fbdev"[[:space:]]+"/dev/fb0"' \
+	"${target_dir}/etc/X11/xorg.conf.d/10-gemmont-fbdev.conf"; then
+	echo "Xorg is not pinned to VGA /dev/fb0" >&2
+	exit 1
+fi
+
+if ! grep -qx 'NODM_XSESSION=/root/.xsession' \
+	"${target_dir}/etc/default/nodm"; then
+	echo "nodm does not start the root Fluxbox session" >&2
+	exit 1
+fi
+if ! grep -qx 'NODM_X_OPTIONS="-nolisten tcp -s 0"' \
+	"${target_dir}/etc/default/nodm"; then
+	echo "nodm does not keep the X server local-only" >&2
+	exit 1
+fi
+
+if ! grep -qx '\*.font:[[:space:]]*DejaVu Sans-10' \
+	"${target_dir}/root/.fluxbox/overlay"; then
+	echo "Fluxbox does not use the packaged scalable UI font" >&2
+	exit 1
+fi
+
 if [ "$(awk -F: '$1 == "root" { print $7 }' "${target_dir}/etc/passwd")" != \
 	/bin/bash ]; then
 	echo "Root login shell is not /bin/bash" >&2
@@ -142,6 +205,21 @@ gcc_bin="${toolchain_dir}/bin/${native_target}-gcc"
 if [ ! -x "${readelf_bin}" ] || [ ! -x "${objdump_bin}" ] ||
    [ ! -x "${gcc_bin}" ]; then
 	echo "GCC 16 LA32R cross-toolchain was not found at ${toolchain_dir}" >&2
+	exit 1
+fi
+
+fbdev_driver="${target_dir}/usr/lib/xorg/modules/drivers/fbdev_drv.so"
+if ! "${readelf_bin}" -l "${fbdev_driver}" | grep -q 'GNU_RELRO'; then
+	echo "Xorg fbdev driver lost GNU RELRO protection" >&2
+	exit 1
+fi
+# xf86-video-fbdev loads libfbdevhw from its Probe callback.  Full immediate
+# binding resolves those symbols before Probe runs and makes dlopen fail, so
+# this one module must retain lazy binding while the rest of the image uses
+# full RELRO.
+if "${readelf_bin}" -d "${fbdev_driver}" |
+	grep -Eq 'BIND_NOW|FLAGS(_1)?[^[]*NOW'; then
+	echo "Xorg fbdev driver incorrectly enables immediate binding" >&2
 	exit 1
 fi
 
@@ -361,6 +439,30 @@ for archive_entry in \
 	usr/bin/fb-test-string \
 	usr/bin/fbdump \
 	usr/bin/fbv \
+	usr/bin/Xorg \
+	usr/bin/startx \
+	usr/bin/xcalc \
+	usr/bin/xclock \
+	usr/bin/xdpyinfo \
+	usr/bin/xedit \
+	usr/bin/xev \
+	usr/bin/xeyes \
+	usr/bin/xinput \
+	usr/bin/xmessage \
+	usr/bin/xrandr \
+	usr/bin/xterm \
+	usr/bin/startfluxbox \
+	usr/bin/fluxbox \
+	usr/sbin/nodm \
+	etc/init.d/S90nodm \
+	etc/X11/xorg.conf.d/10-gemmont-fbdev.conf \
+	etc/default/nodm \
+	root/.fluxbox/init \
+	root/.fluxbox/menu \
+	root/.fluxbox/overlay \
+	root/.fluxbox/startup \
+	root/.xsession \
+	usr/share/fonts/dejavu/DejaVuSans.ttf \
 	usr/lib/libjpeg.so.10 \
 	usr/lib/libpng16.so.16 \
 	root/.bash_profile \

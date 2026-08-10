@@ -3,6 +3,9 @@ set -eu
 
 target_dir=${1:?missing Buildroot target directory}
 inittab="${target_dir}/etc/inittab"
+misc_fonts_dir="${target_dir}/usr/share/fonts/X11/misc"
+font_encodings_dir="${target_dir}/usr/share/fonts/X11/encodings"
+dejavu_fonts_dir="${target_dir}/usr/share/fonts/dejavu"
 
 install -d -m 0700 "${target_dir}/root/.ssh"
 install -d -m 0755 "${target_dir}/etc/ssh/sshd_config.d"
@@ -62,3 +65,29 @@ if [ -n "${LINUX_RELEASE_ARCHIVE:-}" ]; then
 	"$(dirname "$0")/../../../scripts/install-kernel-modules.sh" \
 		"${LINUX_RELEASE_ARCHIVE}" "${target_dir}"
 fi
+
+# The flash layout provides 864 UBI erase blocks for the complete rootfs.  The
+# X.Org's fallback package installs already-compressed copies of every fixed
+# bitmap font for many legacy encodings even though this image uses C.UTF-8 and
+# a Latin UI.  Keep the base and ISO-8859-1 fixed fonts used by Xterm, but omit
+# the duplicate legacy encodings and large CJK glyph sets so the image remains
+# within the fixed UBI partition.
+find "${misc_fonts_dir}" -type f \
+	\( \( -name '*-ISO8859-*.pcf.gz' ! -name '*-ISO8859-1.pcf.gz' \) \
+	-o -name '*-KOI8-R.pcf.gz' -o -name '*-JISX0201.1976-0.pcf.gz' \) \
+	-delete
+for font in 12x13ja.pcf.gz 18x18ja.pcf.gz 18x18ko.pcf.gz k14.pcf.gz; do
+	rm -f "${misc_fonts_dir}/${font}"
+done
+"${target_dir}/../host/bin/mkfontdir" "${misc_fonts_dir}"
+rm -rf "${font_encodings_dir}/large"
+(
+	cd "${font_encodings_dir}"
+	"${target_dir}/../host/bin/mkfontscale" -b -s -l -n -r \
+		-p /usr/share/fonts/X11/encodings -e . .
+)
+
+# Fluxbox uses Xft for menus and window titles.  Retain the regular DejaVu Sans
+# face as its scalable UI font, but remove the optional bold/oblique variants
+# to preserve the limited UBI space.
+find "${dejavu_fonts_dir}" -type f -name 'DejaVuSans-*.ttf' -delete

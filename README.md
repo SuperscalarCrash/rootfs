@@ -12,9 +12,11 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
 - 面向串口展示的 Fastfetch 2.66.0；
 - `fb-test` 测试套件、`fbdump` framebuffer 截图工具和支持
   PNG/JPEG/BMP 的 `fbv` 图片查看器；
+- X.Org Server 21.1.23、fbdev/evdev 驱动、Xterm、Xcalc、Xedit、Xclock、
+  Xeyes 等常用 X11 工具，以及 Fluxbox 1.3.7 窗口管理器；
 - OpenSSH 客户端、服务端、SFTP 和密钥工具；
 - CoreMark 1.01 和 Dhrystone 2.1 CPU 基准测试；
-- GNU grep、tree、htop 3.5.1、tmux 3.6b 和带语法运行库的 Vim 9.1；
+- GNU grep、zstd、tree、htop 3.5.1、tmux 3.6b 和带语法运行库的 Vim 9.1；
 - lrzsz 的 `rz`/`sz`，以及 Android Debug Bridge 的 `adb` 客户端和
   `adbd` 守护程序；
 - nginx 1.30.4（HTTP、HTTPS 和 HTTP/2）、NTP/ntpdate、ISC dhclient
@@ -102,6 +104,27 @@ tmux 所需的 `C.UTF-8` locale 会随 rootfs 一并生成。`adb` 用于从板�
 `evtest` 会列出已注册的 input 设备，也可指定设备，例如
 `evtest /dev/input/event0`。设备编号不固定，应按输出中的键盘名称选择；
 未插键盘时没有按键事件是正常的，不影响 `ttyS0` 和 SSH 登录。
+
+图形桌面由 NODM 在 VT7 自动启动，Xorg 的 fbdev 驱动固定使用 VGA
+`/dev/fb0`，不会误占用 LCD `/dev/fb1`；X server 仅监听本机 Unix socket，
+不开放 TCP 端口。Fluxbox 启动后会显示一个 Xterm，并提供终端、计算器、
+文本编辑器、时钟、系统负载和 X11 诊断菜单。桌面文字使用精简保留的
+DejaVu Sans 字体。串口或 SSH 中可检查桌面：
+
+```sh
+DISPLAY=:0 xdpyinfo
+DISPLAY=:0 xrandr
+DISPLAY=:0 xinput --list
+DISPLAY=:0 xterm &
+DISPLAY=:0 xcalc &
+DISPLAY=:0 xedit &
+```
+
+自动会话异常退出时 NODM 会重新启动它；调试时也可先停止 NODM，再用
+`startx /root/.xsession -- :0 vt7 -nolisten tcp` 手动启动。为使完整镜像留在
+固定的 108 MiB UBI 分区内，镜像保留 Xterm 使用的常规 fixed 字体，但不
+安装 Xorg 字体包中可选的 CJK 点阵字体、大字符集编码表和重复的旧编码
+点阵字体；DejaVu 仅保留 Fluxbox 所需的常规 Sans 字体。
 
 Fastfetch 保留 OS、内核、运行时间、CPU、内存、磁盘和网络等适合板级
 展示的信息，关闭 Vulkan、Wayland、X11、DRM、多媒体和脚本语言等板上

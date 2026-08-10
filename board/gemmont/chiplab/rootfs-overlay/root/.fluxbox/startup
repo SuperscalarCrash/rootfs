@@ -1,0 +1,7 @@
+#!/bin/sh
+
+xset s off
+xsetroot -solid 'rgb:18/22/2a'
+xterm -geometry 80x24+24+24 -title 'Gemmont LA32R' &
+
+exec fluxbox
