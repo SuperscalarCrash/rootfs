@@ -10,7 +10,13 @@ native_toolchain_dir=${GCC16_NATIVE_TOOLCHAIN_DIR:-"${root_dir}/.toolchains/gcc-
 
 mkdir -p "${artifact_dir}"
 
-for image in rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi; do
+# Remove images produced by older configurations so a reused artifact
+# directory cannot accidentally retain the retired UBIFS/UBI outputs.
+for image in rootfs.ubifs rootfs.ubi; do
+	rm -f "${artifact_dir}/${image}"
+done
+
+for image in rootfs.cpio.gz rootfs.tar.zst; do
 	install -m 0644 "${images_dir}/${image}" "${artifact_dir}/${image}"
 done
 
@@ -24,7 +30,7 @@ install -m 0644 \
 
 (
 	cd "${artifact_dir}"
-	sha256sum rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi \
+	sha256sum rootfs.cpio.gz rootfs.tar.zst \
 		buildroot.config toolchain.manifest native-toolchain.manifest \
 		> SHA256SUMS
 )

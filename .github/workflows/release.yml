@@ -210,17 +210,16 @@ jobs:
           archive="gemmont-rootfs-${GITHUB_REF_NAME}-loongarch32.tar.zst"
           mkdir -p "${release_dir}"
           cp artifacts/rootfs.cpio.gz artifacts/rootfs.tar.zst \
-            artifacts/rootfs.ubifs artifacts/rootfs.ubi \
             artifacts/buildroot.config artifacts/toolchain.manifest \
             artifacts/native-toolchain.manifest \
             "${release_dir}/"
           tar --zstd -cf "${release_dir}/${archive}" -C artifacts \
-            rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi \
+            rootfs.cpio.gz rootfs.tar.zst \
             buildroot.config toolchain.manifest native-toolchain.manifest \
             SHA256SUMS
           (
             cd "${release_dir}"
-            sha256sum rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi \
+            sha256sum rootfs.cpio.gz rootfs.tar.zst \
               buildroot.config toolchain.manifest \
               native-toolchain.manifest "${archive}" > SHA256SUMS
           )

@@ -198,7 +198,7 @@ for link_mapping in gcc:gcc cc:gcc as:as ld:ld; do
 	fi
 done
 
-for image in rootfs.cpio.gz rootfs.tar.zst rootfs.ubifs rootfs.ubi; do
+for image in rootfs.cpio.gz rootfs.tar.zst; do
 	if [ ! -s "${images_dir}/${image}" ]; then
 		echo "Missing or empty image: ${images_dir}/${image}" >&2
 		exit 1

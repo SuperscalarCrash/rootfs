@@ -28,7 +28,8 @@ submodule 保存，板级配置、少量 LA32R 补丁、rootfs overlay 和构建
 - 面向 Chiplab NAND 的只读检查工具以及 UBI/UBIFS 管理工具；
 - 可在板上直接运行的 GCC 16.1.0、Binutils 2.46.1、C 头文件和链接库；
 - 可现场编译的 Hello World、VGA 和 NT35510 LCD 色条示例源码；
-- initramfs、tar.zst、UBIFS 和 UBI 四种输出格式。
+- initramfs 和 tar.zst 两种输出格式。CI 不再生成 UBIFS/UBI 镜像；UBI
+  用户态工具仍保留在 rootfs 中，便于挂载和检查已有的板载分区。
 
 ## GCC 16 用户态工具链
 
@@ -69,7 +70,7 @@ submodule 本身保持干净，补丁增加 LA32R/ILP32S 和外部 GCC 16 版本
 `sysroot/` 保存 C 头文件、`crt*.o`、libc 链接文件和 `libgcc.a`，
 避免 Buildroot 在生成生产 rootfs 时清除开发文件。`/usr/bin/gcc`、
 `/usr/bin/cc`、`/usr/bin/as`、`/usr/bin/ld` 等链接让工具可以直接
-使用。全部四种 rootfs 镜像都包含完整工具链；若后续改用 NFS root，
+使用。两种 rootfs 镜像都包含完整工具链；若后续改用 NFS root，
 可直接把 `rootfs.tar.zst` 解包到 NFS 导出目录。
 
 系统保留 `/bin/sh` 指向 BusyBox ash，供启动脚本使用；root 用户通过
@@ -283,16 +284,12 @@ make clean
 
 - `rootfs.cpio.gz`：嵌入 Linux 的 initramfs；
 - `rootfs.tar.zst`：完整根文件系统归档；
-- `rootfs.ubifs`：UBIFS 文件系统；
-- `rootfs.ubi`：适配 128 KiB PEB、2 KiB page、2 KiB subpage 的
-  UBI 镜像；
 - `buildroot.config`、`toolchain.manifest`、
   `native-toolchain.manifest` 和 `SHA256SUMS`。
 
-UBI 参数与 Linux Chiplab DTS 中的 108 MiB `ubi` 分区一致：
-`PEB=0x20000`、`min I/O=0x800`、`LEB=0x1f000`、最大 864 个 LEB。
-Chiplab NAND 驱动设置了 `NAND_NO_SUBPAGE_WRITE`，因此 UBI subpage
-必须与 2 KiB NAND page 一致。
+如果需要更新板载 UBI 分区，请在外部准备与 Linux Chiplab DTS 匹配的 UBI
+镜像；本仓库的 CI 和 Release 不再运行 `mkfs.ubifs`，也不再发布
+`rootfs.ubifs`/`rootfs.ubi`。
 
 ## GitHub Release
 
