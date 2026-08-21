@@ -303,12 +303,16 @@ for fb_number in 0 1; do
 done
 echo "FRAMEBUFFER_TOOLS_OK"
 
-# NODM starts the root Fluxbox session on display :0.  Xorg may need several
-# minutes to initialize on the 50 MHz FPGA, so wait without treating the slow
-# startup as a failure.
+# The desktop is intentionally not started from the init sequence.  Launch it
+# explicitly for this test.  Xorg may need several minutes to initialize on
+# the FPGA, so wait without treating the slow startup as a failure.
 x11_display=:0
 x11_ready=0
 x11_attempt=0
+. /etc/default/nodm
+export NODM_XSESSION NODM_X_OPTIONS NODM_USER NODM_MIN_SESSION_TIME \
+	NODM_FIRST_VT NODM_X_TIMEOUT
+start-stop-daemon -S -q -p /var/run/nodm.pid --exec /usr/sbin/nodm -b -m -S -- ${NODM_OPTIONS}
 while [ "${x11_attempt}" -lt 120 ]; do
 	if DISPLAY="${x11_display}" xdpyinfo \
 		>"${gcc_smoke_dir}/xdpyinfo.log" 2>&1; then

@@ -17,6 +17,13 @@ if [ ! -f "${inittab}" ]; then
 	exit 1
 fi
 
+# Keep the packages available for manual use, but do not start their daemons
+# during the slow NFS-root boot.  These scripts are installed by Buildroot
+# packages rather than by the board overlay, so remove them in post-build.
+for startup in S50nginx S80dhcp-server S90nodm S99gemmont-selftest; do
+	rm -f "${target_dir}/etc/init.d/${startup}"
+done
+
 # Buildroot creates the ttyS0 getty selected by the defconfig.  Add a second,
 # independent getty for the framebuffer virtual terminal used by VGA and a
 # PS/2 keyboard.  Replace any existing tty1 entry so repeated post-build

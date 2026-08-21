@@ -105,9 +105,9 @@ tmux 所需的 `C.UTF-8` locale 会随 rootfs 一并生成。`adb` 用于从板�
 `evtest /dev/input/event0`。设备编号不固定，应按输出中的键盘名称选择；
 未插键盘时没有按键事件是正常的，不影响 `ttyS0` 和 SSH 登录。
 
-图形桌面由 NODM 在 VT7 自动启动，Xorg 的 fbdev 驱动固定使用 VGA
-`/dev/fb0`，不会误占用 LCD `/dev/fb1`；X server 仅监听本机 Unix socket，
-不开放 TCP 端口。Fluxbox 启动后会显示一个 Xterm，并提供终端、计算器、
+图形桌面组件默认不在开机阶段启动；需要时可手动运行 NODM 或 `startx`。
+Xorg 的 fbdev 驱动固定使用 VGA `/dev/fb0`，不会误占用 LCD `/dev/fb1`；
+X server 仅监听本机 Unix socket，不开放 TCP 端口。Fluxbox 启动后会显示一个 Xterm，并提供终端、计算器、
 文本编辑器、时钟、系统负载和 X11 诊断菜单。桌面文字使用精简保留的
 DejaVu Sans 字体。串口或 SSH 中可检查桌面：
 
@@ -120,8 +120,8 @@ DISPLAY=:0 xcalc &
 DISPLAY=:0 xedit &
 ```
 
-自动会话异常退出时 NODM 会重新启动它；调试时也可先停止 NODM，再用
-`startx /root/.xsession -- :0 vt7 -nolisten tcp` 手动启动。为使完整镜像留在
+调试时可手动运行 NODM，或使用
+`startx /root/.xsession -- :0 vt7 -nolisten tcp` 启动。为使完整镜像留在
 固定的 108 MiB UBI 分区内，镜像保留 Xterm 使用的常规 fixed 字体，但不
 安装 Xorg 字体包中可选的 CJK 点阵字体、大字符集编码表和重复的旧编码
 点阵字体；DejaVu 仅保留 Fluxbox 所需的常规 Sans 字体。

@@ -63,7 +63,6 @@ required_target_files="
 /usr/bin/startfluxbox
 /usr/bin/fluxbox
 /usr/sbin/nodm
-/etc/init.d/S90nodm
 /etc/X11/xorg.conf.d/10-gemmont-fbdev.conf
 /etc/default/nodm
 /root/.fluxbox/init
@@ -149,6 +148,13 @@ if ! grep -qx 'NODM_X_OPTIONS="-nolisten tcp -s 0"' \
 	echo "nodm does not keep the X server local-only" >&2
 	exit 1
 fi
+
+for startup in S50nginx S80dhcp-server S90nodm S99gemmont-selftest; do
+	if [ -e "${target_dir}/etc/init.d/${startup}" ]; then
+		echo "Unexpected disabled startup entry remains: ${startup}" >&2
+		exit 1
+	fi
+done
 
 if ! grep -qx '\*.font:[[:space:]]*DejaVu Sans-10' \
 	"${target_dir}/root/.fluxbox/overlay"; then
@@ -454,7 +460,6 @@ for archive_entry in \
 	usr/bin/startfluxbox \
 	usr/bin/fluxbox \
 	usr/sbin/nodm \
-	etc/init.d/S90nodm \
 	etc/X11/xorg.conf.d/10-gemmont-fbdev.conf \
 	etc/default/nodm \
 	root/.fluxbox/init \
