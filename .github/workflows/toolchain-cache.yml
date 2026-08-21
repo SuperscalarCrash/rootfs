@@ -83,6 +83,16 @@ jobs:
           JOBS: "2"
         run: ./scripts/build-gcc16-toolchain.sh
 
+      # The compiler build tree is several gigabytes larger than the
+      # installable toolchain.  It is not part of the cache and must be
+      # removed before the native build, otherwise the hosted runner can run
+      # out of space while the second compiler is being built or cached.
+      - name: Reclaim cross-toolchain build space
+        if: always()
+        run: |
+          set -euo pipefail
+          rm -rf .build/gcc-16.1.0-la32r
+
       - name: Save GCC 16 toolchain cache
         if: steps.gcc_cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
@@ -101,6 +111,14 @@ jobs:
         env:
           JOBS: "2"
         run: ./scripts/build-gcc16-native-toolchain.sh
+
+      # Only the staged native toolchain is needed by later jobs; its host
+      # compiler build tree is not included in the cache.
+      - name: Reclaim native-toolchain build space
+        if: always()
+        run: |
+          set -euo pipefail
+          rm -rf .build/gcc-16.1.0-la32r-native
 
       - name: Save native GCC 16 toolchain cache
         if: steps.native_gcc_cache.outputs.cache-hit != 'true'
